@@ -35,8 +35,17 @@ export function isDriveConnected() {
   return driveState.enabled && !!driveState.accessToken && Date.now() < driveState.tokenExpiry - 30000;
 }
 
+// Privacy PC condiviso (18/07/2026): ownFileIds e sharedShareCodes sono mappe
+// nome-alunno → identificativo Drive/Firebase — utili solo DURANTE la sessione
+// corrente (evitano una ricerca API ad ogni click), ma NON devono sopravvivere a
+// un ricaricamento pagina: una cache persistita, se resta indietro rispetto allo
+// stato reale su Drive (rinomina, cancellazione, condivisione rimossa), ha causato
+// più bug reali in questa sessione di lavoro (vocabolario sbagliato mostrato,
+// rinomina che agiva sul file sbagliato, alunni "fantasma" mai spariti). Restano
+// quindi SOLO in memoria, mai scritte su localStorage.
 function saveDriveState() {
-  localStorage.setItem('caa_driveState_v1', JSON.stringify(driveState));
+  const { ownFileIds, sharedShareCodes, ...persisted } = driveState;
+  localStorage.setItem('caa_driveState_v1', JSON.stringify(persisted));
 }
 
 // ── Carica stato all'avvio ────────────────────────────────────────
@@ -45,6 +54,10 @@ export function loadDriveConfig(onConnected) {
     const saved = localStorage.getItem('caa_driveState_v1');
     if (saved) driveState = Object.assign(driveState, JSON.parse(saved));
   } catch(e) {}
+  // Sempre azzerate ad ogni caricamento pagina (mai persistite, vedi saveDriveState) —
+  // anche per ripulire eventuali residui salvati da versioni precedenti dell'app.
+  driveState.ownFileIds       = {};
+  driveState.sharedShareCodes = {};
 
   if (driveState.enabled && driveState.scopeVersion !== SCOPE_VERSION) {
     // Connessione precedente con scope "drive" completo: serve un nuovo consenso
@@ -641,15 +654,18 @@ export function disconnectDrive(onDisconnect) {
   if (driveState.accessToken && typeof google !== 'undefined' && google.accounts) {
     google.accounts.oauth2.revoke(driveState.accessToken);
   }
-  // Preserva sharedShareCodes e scopeVersion: anche dopo disconnect, i vocabolari condivisi
-  // ricevuti devono tornare automaticamente alla prossima connessione, e non deve essere
-  // richiesto un nuovo consenso pieno se lo scope è già stato aggiornato una volta.
-  const savedSharedCodes  = driveState.sharedShareCodes || {};
+  // Privacy PC condiviso (18/07/2026): sharedShareCodes NON viene più preservato alla
+  // disconnessione — su un PC condiviso non deve restare nessuna traccia locale, nemmeno
+  // quale codice corrisponde a quale nome. Le condivisioni ricevute si recuperano comunque
+  // alla riconnessione tramite indice-condivisi.json su Drive (restoreSharedIndex), quindi
+  // non si perde nulla di reale — si perde solo la cache locale, che è proprio l'obiettivo.
+  // scopeVersion invece resta: non è un dato dell'alunno, serve solo a evitare di richiedere
+  // di nuovo il consenso OAuth pieno se lo scope era già stato aggiornato.
   const savedScopeVersion = driveState.scopeVersion;
   driveState = {
     enabled: false, accessToken: null, tokenExpiry: 0,
     folderId: null, userEmail: '', sharedMode: false,
-    sharedShareCodes: savedSharedCodes,
+    sharedShareCodes: {}, ownFileIds: {},
     scopeVersion: savedScopeVersion,
   };
   saveDriveState();
