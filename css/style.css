@@ -1,0 +1,824 @@
+/* ══════════════════════════════════════════════════════════════════
+   Tesserine CAA – Foglio di stile
+   ⚙️  I commenti "PERSONALIZZA" indicano i punti da modificare facilmente
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── RESET & BASE ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #f0f4f8;
+  color: #1e293b;
+  min-height: 100vh;
+}
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+.site-header {
+  /* ⚙️ PERSONALIZZA: colori header */
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  color: white;
+  padding: 1.4rem 2rem;
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.logo {
+  font-size: 2rem;
+  background: rgba(255,255,255,0.18);
+  border-radius: 50%;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
+}
+.by-line {
+  font-size: 0.78rem;
+  opacity: 0.7;
+  font-weight: 400;
+  display: block;
+  margin-top: 0.1rem;
+  letter-spacing: 0.05em;
+}
+.by-line a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,0.4);
+}
+.by-line a:hover {
+  text-decoration-color: currentColor;
+}
+h1 { font-size: 1.7rem; font-weight: 700; }
+.site-header p { opacity: 0.85; font-size: 0.9rem; margin-top: 0.2rem; }
+
+/* ── LAYOUT ───────────────────────────────────────────────────── */
+main {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 1.5rem;
+}
+
+h2 { font-size: 1.15rem; margin-bottom: 1rem; color: #4f46e5; }
+
+/* ── FORM ─────────────────────────────────────────────────────── */
+label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #475569;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.04em;
+  resize: vertical;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
+}
+
+.row.options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.opt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+select {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  background: white;
+}
+
+.check-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  margin-bottom: 1.2rem;
+  cursor: pointer;
+  color: #475569;
+  font-weight: 400;
+}
+
+.check-label input { width: 16px; height: 16px; cursor: pointer; }
+
+/* ── BUTTONS ──────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.3rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  text-decoration: none;
+}
+
+.btn:active { transform: scale(0.97); }
+
+/* ⚙️ PERSONALIZZA: colore pulsante primario */
+.btn.primary   { background: #7c3aed; color: white; }
+.btn.primary:hover  { background: #6d28d9; }
+.btn.secondary { background: #e2e8f0; color: #334155; }
+.btn.secondary:hover { background: #cbd5e1; }
+.btn.danger    { background: #fee2e2; color: #dc2626; border: 1.5px solid #dc2626; }
+.btn.danger:hover { background: #dc2626; color: white; }
+.btn.small     { font-size: 0.82rem; padding: 0.45rem 0.9rem; }
+.btn:disabled  { opacity: 0.5; cursor: not-allowed; }
+
+/* ── STATUS BAR ───────────────────────────────────────────────── */
+.status {
+  padding: 0.9rem 1.2rem;
+  border-radius: 8px;
+  background: #eff6ff;
+  border-left: 4px solid #4f46e5;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.status.error   { background: #fef2f2; border-color: #ef4444; }
+.status.success { background: #f0fdf4; border-color: #22c55e; }
+.hidden { display: none !important; }
+
+/* ── PREVIEW TOOLBAR ──────────────────────────────────────────── */
+.preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hint { font-size: 0.82rem; color: #64748b; margin-bottom: 1rem; }
+
+/* ── PAGINA A4 (anteprima browser) ───────────────────────────── */
+.a4-page {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  padding: 10mm;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.14);
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  position: relative;
+}
+
+.page-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: right;
+  margin-bottom: 6px;
+}
+
+/* ── GRIGLIA TESSERE ──────────────────────────────────────────── */
+.tile-grid {
+  display: grid;
+  /* grid-template-columns impostato da JS: repeat(N, 1fr) */
+  gap: 4px;
+  width: 100%;
+}
+
+/* ── SINGOLA TESSERA ──────────────────────────────────────────── */
+.tile {
+  /* ⚙️ PERSONALIZZA: sfondo e bordo tessera */
+  background: #ffffff;
+  border: 1.5px dashed #9ca3af;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.12s;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  position: relative;
+}
+
+.tile:hover {
+  border-color: #7c3aed;
+  border-style: solid;
+  transform: scale(1.03);
+  z-index: 1;
+}
+
+.tile:hover .swap-hint { opacity: 1; }
+
+/* Cella vuota (fine frase): bordo tratteggiato leggero, non interattiva */
+.tile--empty {
+  background: transparent;
+  border: 1.5px dashed #e2e8f0;
+  cursor: default;
+  pointer-events: none;
+}
+.tile--empty:hover {
+  border-color: #e2e8f0;
+  border-style: dashed;
+  transform: none;
+}
+
+/* Badge "≈" verde su tessere dove la forma base è stata usata */
+.lemma-badge {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  font-size: 9px;
+  background: rgba(34,197,94,0.88);
+  color: white;
+  border-radius: 3px;
+  padding: 1px 3px;
+  pointer-events: none;
+  font-weight: 700;
+}
+
+/* Icona "scambia" che appare all'hover */
+.swap-hint {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  font-size: 9px;
+  background: rgba(124,58,237,0.85);
+  color: white;
+  border-radius: 3px;
+  padding: 1px 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+/* Zona immagine (occupa ~75% dell'altezza) */
+.tile-img-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tile-img-wrap img {
+  max-width: 92%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.tile-img-wrap .no-image {
+  font-size: 1.8rem;
+  color: #e2e8f0;
+}
+
+/* Zona testo (fascia inferiore) */
+.tile-word {
+  /* ⚙️ PERSONALIZZA: font, dimensione, colore del testo tessera */
+  font-family: Arial, 'Helvetica Neue', sans-serif;
+  font-size: 10px;       /* ⚙️ aumenta per tessere più grandi */
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: center;
+  color: #000000;        /* ⚙️ PERSONALIZZA: colore del testo */
+  line-height: 1.1;
+  padding: 2px 3px 3px;
+  width: 100%;
+  border-top: 1px solid #e5e7eb;
+  /* ⚙️ PERSONALIZZA: sfondo zona testo (es. #fef9c3 per giallo) */
+  background: #ffffff;
+}
+
+/* ── MODAL SELEZIONE ALTERNATIVA ──────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: min(92vw, 580px);
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal h3 {
+  margin-bottom: 1rem;
+  color: #4f46e5;
+  font-size: 1rem;
+}
+
+.modal h3 span {
+  font-weight: 900;
+  text-transform: uppercase;
+  color: #7c3aed;
+}
+
+.alternatives-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.alt-tile {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.4rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.alt-tile:hover { border-color: #7c3aed; background: #faf5ff; }
+.alt-tile.selected { border-color: #7c3aed; background: #ede9fe; }
+
+.alt-tile img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.alt-tile span {
+  display: block;
+  font-size: 9px;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+/* ── FOOTER ───────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+footer a { color: #7c3aed; text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── PULSANTE INFO NELL'HEADER ────────────────────────────────── */
+.btn-info {
+  margin-left: auto;
+  background: rgba(255,255,255,0.18);
+  color: white;
+  border: 2px solid rgba(255,255,255,0.45);
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  font-size: 1.3rem;
+  font-style: italic;
+  font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.btn-info:hover { background: rgba(255,255,255,0.32); }
+
+/* ── PANNELLO INFO ─────────────────────────────────────────────── */
+.info-modal {
+  max-width: 560px;
+  width: min(94vw, 560px);
+}
+
+.info-modal h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1.1rem;
+  color: #4f46e5;
+}
+
+.info-section {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.info-section:last-of-type { border-bottom: none; }
+
+.info-section h4 {
+  font-size: 0.95rem;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.info-section p, .info-section li {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.info-section ul {
+  margin: 0.3rem 0 0.3rem 1.2rem;
+}
+
+.info-section li { margin-bottom: 0.2rem; }
+
+.info-license {
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.82rem !important;
+}
+
+.info-license a { color: #7c3aed; }
+
+/* ── BADGE IMMAGINE CUSTOM ─────────────────────────────────────── */
+.custom-badge {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* ── BADGE ETICHETTA PERSONALIZZATA ────────────────────────────── */
+.label-badge {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  font-size: 9px;
+  pointer-events: none;
+  line-height: 1;
+}
+
+/* ── SEZIONE MODIFICA ETICHETTA NEL MODAL ──────────────────────── */
+.label-edit-section {
+  grid-column: 1 / -1;   /* span tutta la larghezza della alternatives-grid */
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px dashed #e2e8f0;
+}
+
+.label-edit-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  margin: 0 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.label-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.label-edit-input {
+  flex: 1;
+  padding: 0.35rem 0.6rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.label-edit-input:focus {
+  border-color: #6366f1;
+}
+
+/* ── UPLOAD IMMAGINE CUSTOM NEL MODAL ─────────────────────────── */
+.custom-upload-section {
+  grid-column: 1 / -1;   /* span tutta la larghezza della alternatives-grid */
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px dashed #e2e8f0;
+}
+
+.current-custom {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.custom-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  background: #f0fdf4;
+  border: 2px dashed #86efac;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #166534;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  width: 100%;
+  justify-content: center;
+}
+
+.custom-upload-label:hover {
+  background: #dcfce7;
+  border-color: #4ade80;
+}
+
+.modal-divider {
+  grid-column: 1 / -1;   /* span tutta la larghezza della alternatives-grid */
+  text-align: center;
+  margin: 0.75rem 0;
+  position: relative;
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.modal-divider::before,
+.modal-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 35%;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.modal-divider::before { left: 0; }
+.modal-divider::after  { right: 0; }
+
+/* ── RESPONSIVE ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .site-header { padding: 1rem; }
+  h1 { font-size: 1.3rem; }
+  .preview-toolbar { flex-direction: column; align-items: flex-start; }
+  .row.options { gap: 0.6rem; }
+}
+
+/* ── SELETTORE ALUNNO ─────────────────────────────────────────── */
+.student-card {
+  padding: 0.8rem 1.2rem;
+}
+
+.student-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.student-row label {
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.student-row select {
+  flex: 1;
+  min-width: 160px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+}
+
+.student-hint {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  margin-top: 0.4rem;
+}
+
+.btn.danger { color: #dc2626; border-color: #fca5a5; }
+.btn.danger:hover { background: #fef2f2; }
+
+/* ── PULSANTE DRIVE (tondo, stile EduBoard) ──────────────────────── */
+.drive-fab {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.18);
+  border: 2px solid rgba(255,255,255,0.45);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.3s ease, background 0.2s;
+}
+.drive-fab:hover  { background: rgba(255,255,255,0.3); transform: scale(1.06); }
+.drive-fab:active { transform: scale(0.95); }
+
+.drive-fab-inner { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+.drive-fab-inner img#drive-fab-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+
+/* Stato: connesso — bordo verde */
+.drive-fab--connected {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+
+/* Puntino verde di connessione (angolo in basso a destra) */
+.drive-fab-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 2px solid #6d28d9;
+  animation: drive-pulse-green 2s infinite;
+}
+@keyframes drive-pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50%      { box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+}
+
+/* Anello arancione rotante durante il salvataggio */
+.drive-fab--syncing::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #f59e0b;
+  border-right-color: #f59e0b;
+  animation: drive-spin 0.8s linear infinite;
+}
+@keyframes drive-spin { to { transform: rotate(360deg); } }
+
+/* Anello rosso pulsante in caso di errore */
+.drive-fab--error {
+  border-color: #ef4444;
+  animation: drive-pulse-red 1.4s ease-in-out infinite;
+}
+@keyframes drive-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+}
+
+/* Spunta verde di conferma salvataggio (temporanea) */
+.drive-fab-check {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  animation: drive-check-pop 0.3s ease;
+}
+@keyframes drive-check-pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* ── MODAL DRIVE ──────────────────────────────────────────────── */
+.drive-modal-inner { max-width: 480px; width: 95%; }
+.drive-modal-inner h3 { margin-bottom: 1rem; }
+
+.drive-status-bar {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+.drive-status-bar.ok  { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.drive-status-bar.err { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+/* ── TOAST DRIVE ──────────────────────────────────────────────── */
+.drive-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #1e293b;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: transform 0.3s, opacity 0.3s;
+  z-index: 9999;
+  pointer-events: none;
+}
+.drive-toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ── NO-PRINT ─────────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  footer {
+    font-size: 0.6rem;
+    padding: 0.5rem 1rem;
+    color: #aaa;
+    border-top: 1px solid #ddd;
+    margin-top: 1rem;
+  }
+  footer a { color: #aaa; text-decoration: none; }
+}
+
+/* ── VERSIONE (header) ───────────────────────────────────────────── */
+.version-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ── BANNER AGGIORNAMENTO AUTOMATICO ─────────────────────────────── */
+.update-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 400;
+  background: rgba(22, 163, 74, 0.96); /* verde */
+  color: #ffffff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.15);
+}
+.update-banner-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.update-banner-close:hover { opacity: 1; }

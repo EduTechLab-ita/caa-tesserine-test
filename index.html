@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CAArtella by EduTechLab</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#7c3aed" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CAArtella" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+
+  <!-- SEO -->
+  <meta name="description" content="CAArtella by EduTechLab – Pittogrammi ARASAAC per la CAA in classe" />
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Google Identity Services (per OAuth2 Drive) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <span class="logo">🗣️</span>
+      <div>
+        <h1>CAArtella</h1>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.2</span></span>
+        <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
+      </div>
+      <button id="btn-info" class="btn-info" title="Come si usa?" aria-label="Guida">i</button>
+      <button id="drive-btn" class="drive-fab no-print" onclick="window._openDriveModal()" title="Google Drive">
+        <span class="drive-fab-inner">
+          <svg id="drive-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
+          </svg>
+          <img id="drive-fab-photo" src="" alt="" style="display:none;">
+        </span>
+        <span id="drive-fab-check" class="drive-fab-check" style="display:none">✓</span>
+        <span id="drive-fab-badge" class="drive-fab-badge" style="display:none"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Drive Save Toast -->
+  <div id="drive-toast" class="drive-toast no-print">
+    <span class="drive-toast-msg">✅ Dizionario salvato su Drive</span>
+  </div>
+
+  <!-- ── PANNELLO INFO ─────────────────────────────────────────────── -->
+  <div id="info-overlay" class="modal-overlay hidden">
+    <div class="modal info-modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <h3 style="margin:0;">ℹ️ Come si usa — CAArtella</h3>
+        <button id="info-close" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;line-height:1;" title="Chiudi">✕</button>
+      </div>
+
+      <div class="info-section">
+        <h4>📝 1. Inserisci il testo</h4>
+        <p>Scrivi una frase o un breve racconto nel campo di testo. Puoi usare maiuscole o minuscole.
+        Es: <em>"Il bambino mangia la mela rossa"</em></p>
+      </div>
+
+      <div class="info-section">
+        <h4>⚙️ 2. Scegli le opzioni</h4>
+        <ul>
+          <li><b>Colonne / Righe</b> — quante tessere per pagina (es. 4×5 = 20 tessere; fino a 12×12 per tessere molto piccole da ritagliare)</li>
+          <li><b>Dimensione tessera</b> — da 1 cm (micro, lavoretti) a 7 cm (grandi); il PDF adatta automaticamente il font alla dimensione della tessera</li>
+          <li><b>Orientamento</b> — Verticale (A4 classico) o Orizzontale (più colonne sullo stesso foglio)</li>
+          <li><b>Rimuovi articoli…</b> — se spuntato, filtra parole come IL, LA, UNO, DI, A, ecc. per tenere solo le parole piene. Di default è disattivato: tutte le parole vengono incluse.</li>
+        </ul>
+      </div>
+
+      <div class="info-section">
+        <h4>🔍 3. Genera le tesserine</h4>
+        <p>Clicca <b>"Genera Tesserine CAA"</b>. L'app cerca automaticamente il pittogramma ARASAAC per ogni parola.
+        Vedrai l'anteprima divisa in pagine A4.</p>
+        <p>⏳ La prima volta per ogni parola ci vuole qualche secondo (richiesta all'API ARASAAC).</p>
+      </div>
+
+      <div class="info-section">
+        <h4>🔤 4. Forme verbali automatiche</h4>
+        <p>ARASAAC archivia i verbi all'infinito. Se scrivi <em>"mangia"</em>, l'app cerca automaticamente
+        <em>"mangiare"</em> e usa quel pittogramma. Le tessere modificate mostrano un badge verde <b>≈</b>.</p>
+        <p>Il riepilogo in fondo alla pagina mostra tutte le trasformazioni applicate.</p>
+      </div>
+
+      <div class="info-section">
+        <h4>↔️ 5. Cambia un pittogramma</h4>
+        <p>Clicca su qualsiasi tessera per vedere pittogrammi alternativi. Seleziona quello più adatto:
+        la tua scelta viene salvata automaticamente e usata ogni volta che scrivi quella parola.</p>
+      </div>
+
+      <div class="info-section">
+        <h4>🖨️ 6. Scarica il PDF</h4>
+        <p>Clicca <b>"Scarica PDF"</b> per ottenere un file A4 pronto per la stampa a colori.
+        Stampa, ritaglia lungo i bordi tratteggiati e incolla sul quaderno!</p>
+      </div>
+
+      <div class="info-section">
+        <h4>👤 7. Selettore alunno</h4>
+        <p>Usa il selettore in cima alla pagina per gestire vocabolari separati per ogni alunno:</p>
+        <ul>
+          <li><b>Senza nome</b> — dizionario generico, non legato ad alcun alunno</li>
+          <li><b>+ Nuovo</b> — crea un alunno: il suo dizionario è separato dagli altri</li>
+          <li>Cambiando alunno si carica automaticamente il suo vocabolario</li>
+        </ul>
+      </div>
+
+      <div class="info-section">
+        <h4>☁️ 8. Salvataggio su Google Drive</h4>
+        <p>Clicca il pulsante <b>Drive</b> in alto a destra → <b>"Collega a Google Drive"</b>.<br>
+        Da quel momento ogni modifica al vocabolario viene salvata automaticamente sul tuo Drive, accessibile da qualsiasi PC o tablet.</p>
+        <p style="background:#f0fdf4;border-left:3px solid #86efac;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
+          ✅ Il tuo vocabolario personale resta sempre sul tuo Google Drive. Solo per la condivisione con le colleghe (sotto) passa da un database intermedio protetto — nessun accesso pubblico, nessun dato leggibile senza il codice di condivisione.
+        </p>
+
+        <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:0.7rem 0.9rem;margin-top:0.8rem;font-size:0.85rem;">
+          <b>⚠️ Primo collegamento — possibile avviso di Google</b><br>
+          La prima volta che colleghi il Drive, Google potrebbe mostrare un avviso: <em>"Questa app non è verificata"</em>. È normale per le app scolastiche interne non commerciali. <b>Non è un virus o un pericolo.</b><br>
+          Se compare: clicca <b>"Avanzate"</b> (in basso a sinistra nella schermata Google) → poi <b>"Vai su edutechlab.it (non sicuro)"</b> → autorizza.<br>
+          Questo avviso, se compare, è <b>solo alla prima volta</b>. Dopo, il collegamento è automatico.
+        </div>
+
+        <h5 style="margin-top:1rem;">📤 Condividere il vocabolario con una collega (sync bidirezionale)</h5>
+        <p style="font-size:0.85rem;color:#334155;">Le modifiche che fa la collega si sincronizzano automaticamente sul vocabolario originale — costruite insieme un vocabolario sempre più ricco!</p>
+        <ol style="font-size:0.9rem;padding-left:1.2rem;">
+          <li>Seleziona l'alunno/a nel selettore in cima alla pagina</li>
+          <li>Apri il pannello Drive → attendi che il codice sia caricato (non mostra più ⏳)</li>
+          <li>Clicca <b>"Copia messaggio"</b> — il testo con le istruzioni e il link è già pronto</li>
+          <li>Incolla il messaggio e invialo alla collega (email, chat, ecc.)</li>
+          <li>La collega riceve il messaggio con un <b>link già precompilato</b> — cliccandolo si apre CAArtella con il codice già inserito: deve solo collegare il Drive e cliccare <b>Carica</b></li>
+        </ol>
+        <p style="font-size:0.82rem;color:#64748b;margin-top:0.4rem;">
+          🔒 Non serve più condividere manualmente il file su Google Drive: basta il codice. Non condividere il codice pubblicamente — chiunque lo riceva può leggere e modificare quel vocabolario.
+        </p>
+
+        <h5 style="margin-top:1rem;">📥 Hai ricevuto un vocabolario da una collega?</h5>
+        <ol style="font-size:0.9rem;padding-left:1.2rem;">
+          <li>Clicca il link <b>👉 https://edutechlab.it/caa-tesserine/?condividi=…</b> nel messaggio ricevuto — CAArtella si apre con il codice già nel box blu</li>
+          <li>Clicca <b>Drive</b> in alto a destra e collega il tuo account Google scolastico</li>
+          <li>Se compare l'avviso <em>"app non verificata"</em> → clicca <b>Avanzate → Vai su CAArtella</b> (è normale, solo la prima volta)</li>
+          <li>Nel box blu <b>"📥 Hai ricevuto un vocabolario?"</b> il codice è già precompilato → clicca <b>Carica</b></li>
+          <li>Il vocabolario appare nel selettore alunno — le tue modifiche si sincronizzano automaticamente con la collega!</li>
+        </ol>
+      </div>
+
+      <div class="info-section">
+        <h4>📁 9. Immagini personalizzate</h4>
+        <p>Puoi associare <b>immagini tue</b> a qualsiasi parola (foto, personaggi preferiti, disegni dei bambini):</p>
+        <ul>
+          <li>Clicca su una tessera → apparirà il pulsante <b>"📁 Carica immagine personalizzata"</b></li>
+          <li>Seleziona un file dal tuo dispositivo (PNG, JPG, GIF...)</li>
+          <li>L'immagine viene salvata e usata al posto del pittogramma ARASAAC</li>
+          <li>Le tessere con immagini personalizzate mostrano il badge 📷</li>
+        </ul>
+        <p>Le immagini personalizzate vengono incluse nell'esportazione del dizionario — condividendo il file JSON, le colleghe ricevono anche tutte le immagini.</p>
+      </div>
+
+      <div class="info-section">
+        <h4>💾 10. Backup manuale (JSON)</h4>
+        <p>Puoi sempre esportare e importare il vocabolario come file JSON dalla barra degli strumenti sopra l'anteprima. Utile come backup aggiuntivo o per condivisione rapida via WhatsApp.</p>
+        <p style="background:#fef9c3;border-left:3px solid #eab308;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
+          ⚠️ Senza Drive, il vocabolario è salvato <b>solo su questo browser</b>. Se cancelli la cache o cambi PC, va perso. Usa Drive per la sicurezza vera.
+        </p>
+      </div>
+
+      <div class="info-section">
+        <h4>📱 11. Installa come app</h4>
+        <p>Puoi installare CAArtella direttamente sul tuo dispositivo per usarla senza connessione:</p>
+        <ul>
+          <li><b>PC / Mac</b> — nel browser Chrome/Edge: icona ⊕ nella barra degli indirizzi → "Installa app"</li>
+          <li><b>Android</b> — Chrome: menu ⋮ → "Aggiungi a schermata Home"</li>
+          <li><b>iPad / iPhone</b> — Safari: pulsante Condividi 𝛿 → "Aggiungi a schermata Home"</li>
+          <li><b>LIM / Smartboard</b> — usa direttamente da browser Chrome/Edge</li>
+        </ul>
+        <p>⚠️ La generazione dei pittogrammi richiede connessione a Internet (API ARASAAC).</p>
+      </div>
+
+      <div class="info-section info-license">
+        <p>🔑 Pittogrammi: <a href="https://arasaac.org" target="_blank" rel="noopener">ARASAAC</a>
+        © Gobierno de Aragón – Licenza
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>
+        — uso gratuito per scopo educativo non commerciale.<br>
+        © 2026 <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> – Fabio Rizzotto – Tutti i diritti riservati |
+        App sviluppata a scopo didattico non commerciale | D.Lgs. 196/2003 – Trattamento dati personali</p>
+      </div>
+
+      <button id="info-close-bottom" class="btn primary">✓ Ho capito, inizia!</button>
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ── SELETTORE ALUNNO ─────────────────────────────────────────── -->
+    <section class="card student-card">
+      <div class="student-row">
+        <label for="sel-student">👤 Alunno:</label>
+        <select id="sel-student">
+          <option value="">— Nessun nome (uso generico) —</option>
+        </select>
+        <button id="btn-add-student" class="btn secondary small" title="Aggiungi alunno">+ Nuovo</button>
+        <button id="btn-remove-student" class="btn secondary small danger" title="Rimuovi alunno selezionato" style="display:none">✕</button>
+      </div>
+      <p class="student-hint">Il dizionario è separato per ogni alunno. Senza nome usa un dizionario condiviso.</p>
+    </section>
+
+    <!-- ── FORM ─────────────────────────────────────────────────────── -->
+    <section class="card form-card">
+      <h2>Inserisci il testo</h2>
+
+      <label for="txt-input">Frase o testo (qualsiasi maiuscolo/minuscolo):</label>
+      <textarea id="txt-input" rows="4"
+        placeholder="IL BAMBINO MANGIA LA MELA ROSSA&#10;LA MAESTRA LEGGE UN LIBRO"></textarea>
+
+      <div class="row options">
+        <div class="opt">
+          <label for="sel-cols">Colonne</label>
+          <select id="sel-cols">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4" selected>4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="sel-rows">Righe</label>
+          <select id="sel-rows">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5" selected>5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="sel-size">Tessera (PDF)</label>
+          <select id="sel-size">
+            <option value="10">1 × 1 cm (micro)</option>
+            <option value="15">1.5 × 1.5 cm (mini)</option>
+            <option value="20">2 × 2 cm (xs)</option>
+            <option value="30">3 × 3 cm (small)</option>
+            <option value="40">4 × 4 cm</option>
+            <option value="45" selected>4.5 × 4.5 cm</option>
+            <option value="50">5 × 5 cm</option>
+            <option value="60">6 × 6 cm</option>
+            <option value="70">7 × 7 cm (large)</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label for="sel-orient">Orientamento</label>
+          <select id="sel-orient">
+            <option value="portrait" selected>↕ Verticale</option>
+            <option value="landscape">↔ Orizzontale</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="check-label">
+        <input type="checkbox" id="chk-stopwords" />
+        Rimuovi articoli, pronomi e preposizioni
+      </label>
+
+      <button id="btn-generate" class="btn primary">
+        🔍 Genera Tesserine CAA
+      </button>
+      <button id="btn-print-vocab" class="btn secondary">
+        📖 Stampa vocabolario completo
+      </button>
+    </section>
+
+    <!-- ── STATO ─────────────────────────────────────────────────────── -->
+    <div id="status" class="status hidden"></div>
+
+    <!-- ── ANTEPRIMA ─────────────────────────────────────────────────── -->
+    <section id="sec-preview" class="card hidden">
+
+      <div class="preview-toolbar">
+        <h2>Anteprima
+          (<span id="lbl-count">0</span> tessere —
+          <span id="lbl-pages">1</span> pagina/e)
+        </h2>
+        <div class="toolbar-actions">
+          <button id="btn-export-dict" class="btn secondary small">⬇ Esporta dizionario</button>
+          <label class="btn secondary small" style="cursor:pointer;">
+            ⬆ Importa dizionario
+            <input type="file" id="file-import-dict" accept=".json" hidden />
+          </label>
+          <button id="btn-pdf" class="btn primary">🖨️ Scarica PDF</button>
+        </div>
+      </div>
+
+      <p class="hint">💡 Clicca su una tessera per scegliere un pittogramma alternativo.</p>
+
+      <!-- Le pagine A4 vengono iniettate qui da app.js -->
+      <div id="pages-container"></div>
+
+    </section>
+
+  </main>
+
+  <!-- ── MODAL ALTERNATIVA ─────────────────────────────────────────── -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Pittogramma per: <span id="modal-word"></span></h3>
+      <div id="modal-alternatives" class="alternatives-grid"></div>
+      <button id="modal-close" class="btn secondary">✕ Chiudi</button>
+    </div>
+  </div>
+
+  <!-- ── MODAL DRIVE ──────────────────────────────────────────────── -->
+  <div id="drive-modal" class="modal-overlay" style="display:none;">
+    <div class="modal drive-modal-inner">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 style="margin:0;">☁️ Google Drive</h3>
+        <button type="button" onclick="window._closeDriveModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;line-height:1;" title="Chiudi">✕</button>
+      </div>
+
+      <!-- PANNELLO: non connesso -->
+      <div id="drive-panel-connect">
+        <p>Collega il tuo account Google per salvare i vocabolari sul Drive.<br>
+        <small style="color:#64748b">Il tuo vocabolario resta sul tuo Drive personale. La condivisione con le colleghe passa da un database protetto (autenticato, nessun accesso pubblico).</small></p>
+        <button type="button" class="btn primary" style="width:100%;margin-top:12px;" onclick="window._connectDrive()">
+          🔑 Collega a Google Drive
+        </button>
+        <hr style="margin:16px 0;border:none;border-top:1px solid #e2e8f0;">
+        <p style="font-size:0.85rem;color:#475569;margin-bottom:6px;">
+          <b>Hai il codice di una collega?</b> Inseriscilo per caricare il vocabolario condiviso:
+        </p>
+        <div style="display:flex;gap:8px;">
+          <input id="shared-code-input-pre" type="text" placeholder="Incolla il codice ricevuto…"
+                 style="flex:1;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.9rem;">
+          <button type="button" class="btn secondary" onclick="window._connectShared()">Connetti</button>
+        </div>
+        <p style="font-size:0.75rem;color:#94a3b8;margin-top:6px;">
+          ℹ️ Prima collega il Drive, poi inserisci il codice. Se Google mostra un avviso "app non verificata" → clicca <b>Avanzate → Vai su CAArtella</b>. È normale, solo la prima volta.
+        </p>
+      </div>
+
+      <!-- PANNELLO: connesso -->
+      <div id="drive-panel-connected" style="display:none;">
+        <div class="drive-status-bar ok">
+          ✅ Connesso — i vocabolari vengono salvati automaticamente
+        </div>
+        <div style="font-size:0.85rem;color:#475569;margin:10px 0 8px;padding:8px 12px;background:#f8fafc;border-radius:6px;">
+          👤 <span id="drive-user-email"></span>
+        </div>
+
+        <!-- Bottone cartella Drive — sempre visibile quando connesso -->
+        <div style="margin-bottom:12px;">
+          <button type="button" id="drive-open-folder-btn" class="btn secondary small" onclick="window._openDriveFolder()" style="display:none;">
+            📂 Apri CAArtella su Drive
+          </button>
+        </div>
+
+        <!-- Condivisione per-alunno -->
+        <div id="drive-share-section">
+          <p style="font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:4px;">
+            📤 Condividi vocabolario di: <span id="drive-share-student-name" style="color:#7c3aed;">—</span>
+          </p>
+          <div id="drive-share-no-student" style="font-size:0.82rem;color:#94a3b8;">
+            ← Seleziona prima un alunno nel selettore per vedere il codice da condividere.
+          </div>
+          <div id="drive-share-with-student" style="display:none;">
+            <ol style="font-size:0.82rem;color:#475569;padding-left:18px;margin:6px 0 10px;">
+              <li style="margin-bottom:6px;">
+                Clicca <b>"Copia messaggio"</b> qui sotto — il testo con le istruzioni e il link è già pronto
+              </li>
+              <li style="margin-bottom:6px;">
+                Incolla il messaggio e invialo al/alla collega (email, chat, ecc.) — non serve condividere nulla manualmente su Drive
+              </li>
+              <li>Il/la collega riceve il messaggio con un link — cliccandolo si apre CAArtella con il codice già precompilato nel box blu: deve solo collegare il Drive e cliccare <b>Carica</b></li>
+            </ol>
+            <p style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Codice (già incluso nel messaggio):</p>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input id="drive-share-code" type="text" readonly
+                     style="flex:1;min-width:120px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;background:#f1f5f9;color:#334155;font-family:monospace;">
+              <button type="button" class="btn primary small" onclick="window._copyShareCode()">📋 Copia messaggio</button>
+              <button type="button" class="btn secondary small" onclick="window._emailShareCode()">✉️ Invia via email</button>
+            </div>
+          </div>
+          <!-- Vocabolari condivisi ricevuti -->
+          <div id="drive-shared-students" style="margin-top:12px;display:none;">
+            <p style="font-size:0.82rem;font-weight:600;color:#334155;margin-bottom:4px;">📂 Vocabolari condivisi da colleghi/e:</p>
+            <div id="drive-shared-list" style="font-size:0.82rem;color:#475569;"></div>
+          </div>
+        </div>
+
+        <hr style="margin:14px 0;border:none;border-top:1px solid #e2e8f0;">
+
+        <!-- Banner codice in arrivo via link magico -->
+        <div id="drive-incoming-banner" style="display:none;background:#fef9c3;border:2px solid #f59e0b;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+          <p style="font-size:0.9rem;font-weight:700;color:#92400e;margin:0 0 4px;">📥 Vocabolario ricevuto da un/una collega!</p>
+          <p style="font-size:0.82rem;color:#78350f;margin:0 0 8px;">Il codice è già precompilato qui sotto — collega il Drive (se non l'hai già fatto) e clicca <b>Carica</b>.</p>
+          <p style="font-size:0.75rem;color:#92400e;background:#fef3c7;padding:4px 8px;border-radius:4px;margin:0;font-family:monospace;word-break:break-all;" id="drive-incoming-code"></p>
+        </div>
+
+        <!-- Aggiungi vocabolario condiviso (quando già connesso/a) -->
+        <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:8px;padding:12px 14px;margin-bottom:12px;">
+          <p style="font-size:0.85rem;font-weight:700;color:#1d4ed8;margin:0 0 6px;">
+            📥 Hai ricevuto un vocabolario da un/una collega?
+          </p>
+          <p style="font-size:0.8rem;color:#1e40af;margin:0 0 8px;">
+            Incolla qui il codice che ti ha inviato nel messaggio Drive:
+          </p>
+          <div style="display:flex;gap:8px;">
+            <input id="shared-code-input-post" type="text" placeholder="Incolla il codice ricevuto…"
+                   style="flex:1;padding:7px 10px;border:1.5px solid #93c5fd;border-radius:6px;font-size:0.85rem;background:#fff;">
+            <button type="button" class="btn primary small" onclick="window._connectSharedPost()">Carica</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn secondary" style="flex:1;" onclick="window._disconnectDrive()">
+            🔌 Disconnetti
+          </button>
+          <button type="button" class="btn primary" style="flex:1;" onclick="window._closeDriveModal()">
+            ✓ Chiudi
+          </button>
+        </div>
+        <p style="font-size:0.75rem;color:#94a3b8;margin-top:10px;text-align:center;">
+          🔒 Su PC condiviso? Disconnetti al termine: rimuove i tuoi dati dal browser.
+        </p>
+      </div>
+
+      <!-- PANNELLO: errore -->
+      <div id="drive-panel-error" style="display:none;">
+        <div class="drive-status-bar err">
+          ⚠️ <span id="drive-error-text">Errore di connessione</span>
+        </div>
+        <button type="button" class="btn primary" style="width:100%;margin-top:12px;" onclick="window._connectDrive()">
+          Riprova
+        </button>
+        <button type="button" class="btn secondary" style="width:100%;margin-top:8px;" onclick="window._closeDriveModal()">✕ Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Pittogrammi: <a href="https://arasaac.org" target="_blank" rel="noopener">ARASAAC</a>
+    © Gobierno de Aragón –
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>
+    &nbsp;|&nbsp; © 2026 <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> – Fabio Rizzotto – Tutti i diritti riservati
+    &nbsp;|&nbsp; App sviluppata a scopo didattico non commerciale
+    &nbsp;|&nbsp; D.Lgs. 196/2003 – Trattamento dati personali
+  </footer>
+
+  <!-- jsPDF (client-side PDF, nessun backend necessario) — SRI rimosso intenzionalmente -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- App (ES modules — richiede server HTTP, non funziona con file://) -->
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Banner aggiornamento automatico -->
+  <div id="update-banner" class="update-banner" style="display:none">
+    <span id="update-banner-text">✅ Aggiornata all'ultima versione!</span>
+    <button type="button" id="dismiss-update" class="update-banner-close" aria-label="Chiudi">×</button>
+  </div>
+
+  <!-- Registrazione Service Worker (PWA offline + aggiornamento automatico) -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          reg.update(); // forza il controllo di una nuova versione ad ogni apertura
+        }).catch(err => console.warn('SW registration failed:', err));
+
+        // Il nuovo SW si attiva da solo (skipWaiting automatico in sw.js) —
+        // quando prende il controllo, ricarica la pagina in automatico.
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+      });
+    }
+
+    // ── Banner "Aggiornata!" ──────────────────────────────────────────
+    // Confronta la versione mostrata in pagina con l'ultima vista su questo browser:
+    // se diversa (e non è la primissima visita) mostra il banner verde.
+    // Volutamente NON basato sugli eventi del Service Worker (installing/activating/
+    // postMessage): il reload automatico può scattare prima che quegli eventi vengano
+    // consegnati al client, perdendo l'informazione — un confronto diretto del numero
+    // di versione, sempre disponibile subito al caricamento, non ha questo problema.
+    (function() {
+      const currentVersion = document.getElementById('app-version')?.textContent || '';
+      const lastSeen = localStorage.getItem('caa_last_seen_version');
+      if (currentVersion && lastSeen && lastSeen !== currentVersion) {
+        const banner = document.getElementById('update-banner');
+        const text   = document.getElementById('update-banner-text');
+        if (banner && text) {
+          text.textContent = `✅ Aggiornata a ${currentVersion}!`;
+          banner.style.display = 'flex';
+          setTimeout(() => { banner.style.display = 'none'; }, 6000);
+        }
+      }
+      if (currentVersion) localStorage.setItem('caa_last_seen_version', currentVersion);
+    })();
+    document.getElementById('dismiss-update')?.addEventListener('click', () => {
+      document.getElementById('update-banner').style.display = 'none';
+    });
+  </script>
+
+</body>
+</html>
