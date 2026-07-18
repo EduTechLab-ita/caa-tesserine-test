@@ -199,22 +199,33 @@ Apri https://edutechlab.it/caa-tesserine/, clicca "Drive" in alto a destra, coll
 e clicca Carica.`;
 }
 
+// NOTA IMPORTANTE (18/07/2026): clipboard.writeText() e mailto: richiedono di
+// avvenire A RIDOSSO SINCRONO del click utente — se prima si aspetta (await) una
+// chiamata di rete (es. makeShareReady su Firebase), il browser può bloccare
+// silenziosamente l'azione (nessun errore, nessun effetto visibile). Per questo
+// l'azione utente (copia/apertura mail) va SEMPRE prima, e la pubblicazione su
+// Firebase in background dopo, mai il contrario.
 window._copyShareCode   = async () => {
   const code        = document.getElementById('drive-share-code')?.value;
   const studentName = getCurrentStudent();
   if (!code || code.startsWith('—') || code.startsWith('⏳')) return;
 
-  // Pubblica lo snapshot corrente su Firebase, pronto per la condivisione
-  await makeShareReady(code, studentName, dictionary, customImages, customLabels);
-
   const msg = _buildShareMessage(code, studentName);
 
-  navigator.clipboard.writeText(msg)
-    .then(() => alert(
+  try {
+    await navigator.clipboard.writeText(msg);
+    alert(
       '✅ Messaggio copiato!\n\n' +
       'Incollalo dove preferisci per inviarlo al/alla collega (email, chat, ecc.).\n\n' +
       'Il messaggio contiene già il codice, il link e tutte le istruzioni.'
-    ));
+    );
+  } catch(e) {
+    alert('⚠️ Non sono riuscito a copiare automaticamente. Codice da condividere manualmente: ' + code);
+  }
+
+  // Pubblica lo snapshot corrente su Firebase, in background (non blocca l'azione sopra)
+  makeShareReady(code, studentName, dictionary, customImages, customLabels)
+    .catch(e => showDriveToast('⚠️ Errore pubblicazione condivisione: ' + e.message));
 };
 
 // Versione breve del messaggio, SOLO per mailto: i link mailto: hanno un limite
@@ -243,12 +254,14 @@ window._emailShareCode = async () => {
   const studentName = getCurrentStudent();
   if (!code || code.startsWith('—') || code.startsWith('⏳')) return;
 
-  await makeShareReady(code, studentName, dictionary, customImages, customLabels);
-
   const msg     = _buildShareMessageShort(code, studentName);
   const subject = `Vocabolario CAA condiviso — ${studentName || 'alunno'} (CAArtella)`;
   const mailto  = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
   window.location.href = mailto;
+
+  // Pubblica lo snapshot corrente su Firebase, in background (non blocca l'apertura sopra)
+  makeShareReady(code, studentName, dictionary, customImages, customLabels)
+    .catch(e => showDriveToast('⚠️ Errore pubblicazione condivisione: ' + e.message));
 };
 // Copia solo il codice (file ID)
 window._copyCode = () => {
