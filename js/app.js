@@ -162,7 +162,7 @@ window._connectDrive    = connectToDrive;
 window._disconnectDrive = () => disconnectDrive(() => { updateStudentSelector(); });
 // Costruisce il testo del messaggio di condivisione (riusato da copia e mailto)
 function _buildShareMessage(code, studentName) {
-  const shareUrl = `https://edutechlab.it/caa-tesserine/?condividi=${code}`;
+  const shareUrl = `${location.origin}${location.pathname}?condividi=${code}`;
   return `📚 Ti condivido il vocabolario CAA di "${studentName}" tramite CAArtella.
 
 Ora APRI L'APP CAArtella — copia SOLO questo link:
@@ -190,7 +190,7 @@ Da quel momento le nostre modifiche si sincronizzano automaticamente 🎉
 
 ---
 ⚠️ Se il link non si apre correttamente, puoi usare il codice manuale:
-Apri https://edutechlab.it/caa-tesserine/, clicca "Drive" in alto a destra, collega il tuo account Google, poi incolla questo codice nel box blu "Hai ricevuto un vocabolario?":
+Apri ${location.origin}${location.pathname}, clicca "Drive" in alto a destra, collega il tuo account Google, poi incolla questo codice nel box blu "Hai ricevuto un vocabolario?":
 
 
 👉  ${code}
@@ -233,7 +233,7 @@ window._copyShareCode   = async () => {
 // soglia, senza errore visibile) — il messaggio completo di _buildShareMessage() è
 // troppo lungo. "Copia messaggio" invece non ha questo limite (va nella clipboard).
 function _buildShareMessageShort(code, studentName) {
-  const shareUrl = `https://edutechlab.it/caa-tesserine/?condividi=${code}`;
+  const shareUrl = `${location.origin}${location.pathname}?condividi=${code}`;
   return `📚 Ti condivido il vocabolario CAA di "${studentName}" tramite CAArtella.
 
 Apri questo link, si collega tutto in automatico:
@@ -243,7 +243,7 @@ Poi clicca "Collega a Google Drive" (accedi col tuo account Google scolastico) e
 
 ⚠️ Se Google mostra "app non verificata": clicca "Avanzate" → "Vai su edutechlab.it" → autorizza. È normale per le app della scuola, capita solo la prima volta.
 
-Se il link non si apre, apri https://edutechlab.it/caa-tesserine/, clicca "Drive", collegati e incolla questo codice:
+Se il link non si apre, apri ${location.origin}${location.pathname}, clicca "Drive", collegati e incolla questo codice:
 👉 ${code}`;
 }
 
