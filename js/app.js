@@ -1227,6 +1227,12 @@ function initStudentSelector() {
       return;
     }
 
+    // Annulla un eventuale salvataggio automatico già in coda (scheduleDriveSync,
+    // debounce 1.5s): se scattasse proprio durante la rinomina, andrebbe in gara
+    // con essa e creerebbe un file Drive duplicato invece di rinominare quello
+    // esistente (bug reale osservato da Fabio il 18/07/2026).
+    clearTimeout(_driveSaveTimer);
+
     // Migra i dati locali dal vecchio al nuovo nome
     const dictToMove   = loadDictionaryForStudent(oldName);
     const labelsToMove = loadLabelsForStudent(oldName);
