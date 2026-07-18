@@ -307,8 +307,16 @@ export async function connectSharedFile(code) {
   }
   let data;
   try {
-    const token = await _fbAuthToken();
-    const resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${code}.json?auth=${token}`);
+    let token = await _fbAuthToken();
+    let resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${code}.json?auth=${token}`);
+    if (resp.status === 401 || resp.status === 403) {
+      // Token anonimo in cache non più valido (raro ma capita) — lo scartiamo e
+      // ne richiediamo uno nuovo, un solo retry automatico prima di arrendersi.
+      localStorage.removeItem('caa_fb_idtoken');
+      localStorage.removeItem('caa_fb_expiry');
+      token = await _fbAuthToken();
+      resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${code}.json?auth=${token}`);
+    }
     if (!resp.ok) throw new Error('HTTP_' + resp.status);
     data = await resp.json();
   } catch(e) {
