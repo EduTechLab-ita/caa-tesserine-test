@@ -432,6 +432,53 @@ async function _getEffectiveShareCode(studentName) {
   } catch(e) { return null; }
 }
 
+// ── Rinomina un alunno (proprio o condiviso), propagando la modifica ─────
+// Alunno condiviso (proprio già condiviso, o ricevuto): riscrive il campo
+// "student" su Firebase — chiunque altro veda questo shareCode lo scoprirà al
+// prossimo refresh (vedi _refreshCurrentStudentFromDrive in app.js).
+// Alunno proprio mai condiviso: rinomina semplicemente il file su Drive.
+export async function renameStudentOnDrive(oldName, newName, dict, custom, labels) {
+  if (!isDriveConnected()) return;
+  const shareCode = await _getEffectiveShareCode(oldName);
+
+  if (shareCode) {
+    const token = await _fbAuthToken();
+    const payload = JSON.stringify({
+      dict: dict || {}, custom: custom || {}, labels: labels || {},
+      student: newName, updatedAt: new Date().toISOString(),
+    });
+    const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
+    });
+    if (!putResp.ok) throw new Error('Rinomina condivisa fallita (' + putResp.status + ')');
+    if (driveState.sharedShareCodes?.[oldName]) {
+      delete driveState.sharedShareCodes[oldName];
+      driveState.sharedShareCodes[newName] = shareCode;
+      saveDriveState();
+    }
+    return;
+  }
+
+  // Alunno proprio, mai condiviso: rinomina il file su Drive
+  if (!driveState.folderId) return;
+  const oldFileName = `vocabolario-${sanitizeName(oldName || '_anonimo')}.json`;
+  const fileId = driveState.ownFileIds?.[oldName] || await findStudentFile(oldFileName);
+  if (!fileId) return;
+  const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
+  await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
+  try {
+    const content = await loadFileContent(fileId);
+    content.student = newName;
+    await updateDriveFile(fileId, JSON.stringify(content));
+  } catch(e) { /* non bloccante */ }
+
+  if (driveState.ownFileIds?.[oldName]) {
+    delete driveState.ownFileIds[oldName];
+    driveState.ownFileIds[newName] = fileId;
+    saveDriveState();
+  }
+}
+
 // ── URL cartella CAArtella su Drive (null se non connesso) ────────
 export function getDriveFolderUrl() {
   if (!driveState.folderId) return null;
@@ -522,14 +569,28 @@ export async function loadStudentFromDrive(studentName) {
     // Altrimenti cerca nel folder personale
     if (!driveState.folderId) return null;
     const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
-    const fileId   = driveState.ownFileIds?.[studentName] || await findStudentFile(fileName);
-    if (!fileId) return null;
+    let fileId = driveState.ownFileIds?.[studentName];
+    let content = null;
+    if (fileId) {
+      // Autocorregge una cache ownFileIds corrotta (es. da test precedenti): se il
+      // file trovato in cache non corrisponde davvero a questo alunno, la scarta e
+      // ricerca da capo per nome — invece di restare bloccata su un file sbagliato.
+      try {
+        content = await loadFileContent(fileId);
+        if ((content.student || '') !== (studentName || '')) { fileId = null; content = null; }
+      } catch(e) { fileId = null; content = null; }
+    }
+    if (!fileId) {
+      fileId = await findStudentFile(fileName);
+      if (!fileId) return null;
+      content = await loadFileContent(fileId);
+    }
 
     // Aggiorna cache
     driveState.ownFileIds = driveState.ownFileIds || {};
     driveState.ownFileIds[studentName] = fileId;
     saveDriveState();
-    return await loadFileContent(fileId);
+    return content;
   } catch(err) {
     console.error('[Drive] Errore caricamento:', err);
     return null;

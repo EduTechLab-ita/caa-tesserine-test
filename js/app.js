@@ -8,6 +8,7 @@ import {
   getStudentsList, getCurrentStudent, setCurrentStudent, addStudent, removeStudent,
   getLegacyDictionaryCount, loadDictionaryForStudent,
   loadLabelsForStudent, saveLabelsForStudent, purgeAllLocalData,
+  renameStudentInList, deleteStudentData,
 } from './dictionary.js';
 
 import {
@@ -15,7 +16,7 @@ import {
   saveStudentToDrive, loadStudentFromDrive, listStudentsOnDrive,
   connectSharedFile, isSharedStudent, getStudentShareCode, getDriveFolderUrl,
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
-  makeShareReady, recordSharedCode, findStudentNameForCode,
+  makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -120,13 +121,39 @@ document.addEventListener('caa-drive-connected', () => {
 // EduBoard: il laser a 50ms bruciava metà del limite Cloudflare):
 // 1. refresh quando la scheda torna in primo piano (a costo quasi zero)
 // 2. controllo periodico leggero (ogni 25s) SOLO mentre un alunno è selezionato
+// Adotta in locale una rinomina fatta altrove (proprietario o una collega hanno
+// cliccato "rinomina" sul loro lato) — NON scrive nulla su Drive/Firebase, il
+// nuovo nome è già la fonte di verità remota, qui si allinea solo la copia locale.
+function _adoptRemoteRename(oldName, newName) {
+  const dictToMove   = loadDictionaryForStudent(oldName);
+  const labelsToMove = loadLabelsForStudent(oldName);
+  const imagesToMove = loadCustomImagesForStudent(oldName);
+  saveDictionaryForStudent(newName, dictToMove);
+  saveLabelsForStudent(newName, labelsToMove);
+  saveCustomImagesForStudent(newName, imagesToMove);
+  deleteStudentData(oldName);
+  localStorage.removeItem(`caa_custom_v2_${oldName}`);
+  renameStudentInList(oldName, newName);
+  setCurrentStudent(newName);
+  updateStudentSelector(newName);
+}
+
 async function _refreshCurrentStudentFromDrive() {
-  const name = getCurrentStudent();
+  let name = getCurrentStudent();
   if (!name || !isDriveConnected() || document.hidden) return;
   const token = ++_selectorLoadToken;
   const driveData = await loadStudentFromDrive(name);
   if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
   if (!driveData) return;
+
+  // Qualcun altro ha rinominato questo alunno (proprietario o collega) — adotta
+  // il nuovo nome in locale così la modifica si propaga anche senza intervento.
+  const remoteName = driveData.student;
+  if (remoteName && remoteName !== name && !getStudentsList().includes(remoteName)) {
+    _adoptRemoteRename(name, remoteName);
+    name = remoteName;
+  }
+
   const newDict = driveData.dict || {};
   if (JSON.stringify(newDict) === JSON.stringify(dictionary)) return; // nessuna novità
   dictionary   = newDict;
@@ -1184,6 +1211,49 @@ function initStudentSelector() {
     dictionary   = loadDictionary();
     customImages = loadCustomImagesForStudent('');
   });
+
+  // Rinomina alunno (es. correggere un errore di battitura) — se l'alunno è
+  // condiviso, la modifica viene propagata a chi lo vede (proprietario o colleghe)
+  // tramite Firebase, al prossimo refresh automatico.
+  $('btn-rename-student').addEventListener('click', async () => {
+    const oldName = getCurrentStudent();
+    if (!oldName) return;
+    const input = prompt(`Nuovo nome per "${oldName}":`, oldName);
+    if (!input) return;
+    const newName = input.trim();
+    if (!newName || newName === oldName) return;
+    if (getStudentsList().includes(newName)) {
+      alert(`Esiste già un alunno chiamato "${newName}". Scegli un nome diverso.`);
+      return;
+    }
+
+    // Migra i dati locali dal vecchio al nuovo nome
+    const dictToMove   = loadDictionaryForStudent(oldName);
+    const labelsToMove = loadLabelsForStudent(oldName);
+    const imagesToMove = loadCustomImagesForStudent(oldName);
+    saveDictionaryForStudent(newName, dictToMove);
+    saveLabelsForStudent(newName, labelsToMove);
+    saveCustomImagesForStudent(newName, imagesToMove);
+    deleteStudentData(oldName);
+    localStorage.removeItem(`caa_custom_v2_${oldName}`);
+    renameStudentInList(oldName, newName);
+    updateStudentSelector(newName);
+    setCurrentStudent(newName);
+    dictionary   = dictToMove;
+    customLabels = labelsToMove;
+    customImages = imagesToMove;
+
+    // Propaga su Drive/Firebase (se connesso) — vale sia per alunno proprio che condiviso
+    if (isDriveConnected()) {
+      try {
+        await renameStudentOnDrive(oldName, newName, dictionary, customImages, customLabels);
+        showStatus(`✅ Alunno rinominato in "${newName}"`, 'success');
+      } catch(err) {
+        showStatus(`⚠️ Rinominato in locale, ma la sincronizzazione su Drive è fallita: ${err.message}`, 'error');
+      }
+    }
+    if (tiles.length > 0) renderPages();
+  });
 }
 
 function updateStudentSelector(selectName) {
@@ -1206,6 +1276,18 @@ function updateStudentSelector(selectName) {
 function _updateRemoveBtn(studentName) {
   const btn = $('btn-remove-student');
   btn.style.display = studentName ? 'inline-block' : 'none';
+  const renameBtn = $('btn-rename-student');
+  if (renameBtn) renameBtn.style.display = studentName ? 'inline-block' : 'none';
+  // Il vocabolario completo ha senso solo con un alunno specifico selezionato —
+  // in modalità "uso generico" nascondiamo il pulsante (nessun nome da mostrare).
+  if (btnPrintVocab) {
+    if (studentName) {
+      btnPrintVocab.style.display = 'inline-block';
+      btnPrintVocab.textContent = `📖 Mostra vocabolario completo di "${studentName}"`;
+    } else {
+      btnPrintVocab.style.display = 'none';
+    }
+  }
 }
 
 // Helper per caricare custom images per alunno specifico

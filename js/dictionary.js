@@ -64,6 +64,23 @@ export function removeStudent(name) {
   saveStudentsData(data);
 }
 
+/** Rinomina un alunno nella lista locale (sostituisce, non duplica). */
+export function renameStudentInList(oldName, newName) {
+  const data = loadStudentsData();
+  const idx = data.list.indexOf(oldName);
+  if (idx !== -1) data.list[idx] = newName;
+  else if (!data.list.includes(newName)) data.list.push(newName);
+  if (data.current === oldName) data.current = newName;
+  saveStudentsData(data);
+}
+
+/** Rimuove dizionario + etichette salvate per un alunno (usato dopo una rinomina,
+ *  per non lasciare doppioni col vecchio nome). */
+export function deleteStudentData(name) {
+  localStorage.removeItem(dictKey(name));
+  localStorage.removeItem(labelsKey(name));
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  DIZIONARIO PER ALUNNO
 // ══════════════════════════════════════════════════════════════════
