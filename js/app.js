@@ -257,10 +257,17 @@ window._emailShareCode = async () => {
   const msg     = _buildShareMessageShort(code, studentName);
   const subject = `Vocabolario CAA condiviso — ${studentName || 'alunno'} (CAArtella)`;
   const mailto  = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
-  // window.open (non location.href): apre il client mail in una scheda/finestra
-  // separata così CAArtella resta aperta — location.href sostituiva la pagina attuale.
-  const opened = window.open(mailto, '_blank');
-  if (!opened) window.location.href = mailto; // fallback se il browser blocca window.open
+  // Link <a target="_blank"> cliccato via JS: a differenza sia di location.href
+  // (sostituisce la pagina corrente, chiudendo CAArtella) sia di window.open()
+  // (non attiva in modo affidabile il gestore di protocollo registrato per mailto:),
+  // un vero elemento <a> è gestito correttamente dal browser in entrambi i casi.
+  const a = document.createElement('a');
+  a.href = mailto;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 
   // Pubblica lo snapshot corrente su Firebase, in background (non blocca l'apertura sopra)
   makeShareReady(code, studentName, dictionary, customImages, customLabels)
