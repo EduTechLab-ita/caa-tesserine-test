@@ -15,8 +15,22 @@ import {
   saveStudentToDrive, loadStudentFromDrive, listStudentsOnDrive,
   connectSharedFile, isSharedStudent, getStudentShareCode, getDriveFolderUrl,
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
-  makeShareReady,
+  makeShareReady, recordSharedCode, findStudentNameForCode,
 } from './drive.js';
+
+// Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
+// evitando di sovrascrivere un alunno già esistente con lo stesso nome (es. due
+// colleghe hanno entrambe un'alunna "Emma", persone diverse). Se questo stesso
+// codice era già stato sincronizzato prima, riusa sempre lo stesso nome scelto
+// allora (stabile sync dopo sync).
+function _resolveIncomingStudentName(suggestedName, code) {
+  const already = findStudentNameForCode(code);
+  if (already) return already;
+  if (!getStudentsList().includes(suggestedName)) return suggestedName;
+  let n = 2, candidate = `${suggestedName} (${n})`;
+  while (getStudentsList().includes(candidate)) { n++; candidate = `${suggestedName} (${n})`; }
+  return candidate;
+}
 
 import { parseText, parseTextToPhrases }                from './parser.js';
 import { searchPictograms, getPictogramUrl,
@@ -250,18 +264,23 @@ window._connectShared = async () => {
   if (!code) { alert('Inserisci il codice ricevuto dal/dalla collega.'); return; }
   try {
     const data = await connectSharedFile(code);
-    addStudent(data.studentName);
+    const finalName = _resolveIncomingStudentName(data.studentName, code);
+    recordSharedCode(finalName, code);
+    addStudent(finalName);
     // Salva i dati ricevuti in locale
-    saveDictionaryForStudent(data.studentName, data.dict);
-    saveCustomImagesForStudent(data.studentName, data.custom || {});
-    saveLabelsForStudent(data.studentName, data.labels || {});
-    updateStudentSelector(data.studentName);
-    setCurrentStudent(data.studentName);
+    saveDictionaryForStudent(finalName, data.dict);
+    saveCustomImagesForStudent(finalName, data.custom || {});
+    saveLabelsForStudent(finalName, data.labels || {});
+    updateStudentSelector(finalName);
+    setCurrentStudent(finalName);
     dictionary   = data.dict;
     customImages = data.custom || {};
     customLabels = data.labels || {};
     closeDriveModal();
-    showStatus(`✅ Vocabolario di "${data.studentName}" caricato e sincronizzato!`, 'success');
+    showStatus(finalName === data.studentName
+      ? `✅ Vocabolario di "${finalName}" caricato e sincronizzato!`
+      : `✅ Vocabolario ricevuto! Avevi già un'alunna/o "${data.studentName}" tuo/a — questo è stato salvato come "${finalName}" per non sovrascriverlo.`,
+      'success');
   } catch(err) {
     alert('❌ ' + err.message);
   }
@@ -273,12 +292,14 @@ window._connectSharedPost = async () => {
   if (!code) { alert('Inserisci il codice ricevuto dal/dalla collega.'); return; }
   try {
     const data = await connectSharedFile(code);
-    addStudent(data.studentName);
-    saveDictionaryForStudent(data.studentName, data.dict);
-    saveCustomImagesForStudent(data.studentName, data.custom || {});
-    saveLabelsForStudent(data.studentName, data.labels || {});
-    updateStudentSelector(data.studentName);
-    setCurrentStudent(data.studentName);
+    const finalName = _resolveIncomingStudentName(data.studentName, code);
+    recordSharedCode(finalName, code);
+    addStudent(finalName);
+    saveDictionaryForStudent(finalName, data.dict);
+    saveCustomImagesForStudent(finalName, data.custom || {});
+    saveLabelsForStudent(finalName, data.labels || {});
+    updateStudentSelector(finalName);
+    setCurrentStudent(finalName);
     dictionary   = data.dict;
     customImages = data.custom || {};
     customLabels = data.labels || {};
@@ -287,7 +308,10 @@ window._connectSharedPost = async () => {
     const banner = document.getElementById('drive-incoming-banner');
     if (banner) banner.style.display = 'none';
     _refreshDriveSharePanel();
-    showStatus(`✅ Vocabolario di "${data.studentName}" caricato e attivo!`, 'success');
+    showStatus(finalName === data.studentName
+      ? `✅ Vocabolario di "${finalName}" caricato e attivo!`
+      : `✅ Vocabolario ricevuto! Avevi già un'alunna/o "${data.studentName}" tuo/a — questo è stato salvato come "${finalName}" per non sovrascriverlo.`,
+      'success');
   } catch(err) {
     alert('❌ ' + err.message);
   }
@@ -1144,8 +1168,10 @@ async function _refreshDriveSharePanel() {
   const withStudentEl = document.getElementById('drive-share-with-student');
   const codeEl        = document.getElementById('drive-share-code');
   const fileNameEl    = document.getElementById('drive-share-filename');
+  const emailBtnEl    = document.getElementById('btn-email-share');
 
   if (nameEl) nameEl.textContent = studentName || '—';
+  if (emailBtnEl) emailBtnEl.textContent = studentName ? `✉️ Invia vocabolario di "${studentName}"` : '✉️ Invia via email';
 
   if (!studentName || !isDriveConnected()) {
     if (noStudentEl)   noStudentEl.style.display   = 'block';

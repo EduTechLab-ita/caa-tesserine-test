@@ -328,9 +328,6 @@ export async function connectSharedFile(code) {
   }
 
   const studentName = data.student || 'Alunno condiviso';
-  driveState.sharedShareCodes = driveState.sharedShareCodes || {};
-  driveState.sharedShareCodes[studentName] = code;
-  saveDriveState();
 
   // Aggiorna l'indice su Drive (sopravvive alla pulizia cache)
   try {
@@ -347,7 +344,30 @@ export async function connectSharedFile(code) {
     showDriveToast('⚠️ Errore salvataggio indice Drive: ' + e.message);
   }
 
+  // Nota: NON registriamo qui sharedShareCodes[studentName] — il nome suggerito da
+  // Firebase può collidere con un alunno già presente in locale (es. due colleghe
+  // hanno entrambe un'alunna "Emma", persone diverse). La scelta del nome finale
+  // (con eventuale disambiguazione) spetta al chiamante — vedi recordSharedCode().
   return { studentName, dict: data.dict || {}, custom: data.custom || {}, labels: data.labels || {} };
+}
+
+// Registra sotto quale nome locale è stato salvato un vocabolario condiviso
+// (il chiamante decide il nome finale, dopo l'eventuale disambiguazione da collisione).
+export function recordSharedCode(name, code) {
+  driveState.sharedShareCodes = driveState.sharedShareCodes || {};
+  driveState.sharedShareCodes[name] = code;
+  saveDriveState();
+}
+
+// Se questo codice è già stato sincronizzato in passato, ritorna il nome locale
+// usato allora (per restare stabili sync dopo sync, anche se il nome originale
+// era in collisione ed è stato rinominato la prima volta).
+export function findStudentNameForCode(code) {
+  const map = driveState.sharedShareCodes || {};
+  for (const name in map) {
+    if (map[name] === code) return name;
+  }
+  return null;
 }
 
 // ── Ottieni codice da condividere per un alunno (stabile, generato una volta) ──
