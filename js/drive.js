@@ -409,6 +409,31 @@ export function isSharedStudent(studentName) {
   return !!(driveState.sharedShareCodes?.[studentName]);
 }
 
+// Trova il fileId Drive di un alunno proprio, verificando che la cache ownFileIds
+// sia ancora corretta (il file trovato deve avere content.student coerente) prima
+// di fidarsene — altrimenti ricerca per nome, aggiornando la cache. Una cache
+// corrotta da test precedenti ha già causato più bug reali (18/07/2026): vocabolario
+// sbagliato mostrato alla selezione, rinomina che agiva sul file sbagliato lasciando
+// quello vero intatto. Usata da tutte le funzioni che leggono/scrivono un alunno
+// proprio, invece di ripetere la stessa logica di cache in 4 punti diversi.
+async function _findVerifiedOwnFile(studentName) {
+  const cached = driveState.ownFileIds?.[studentName];
+  if (cached) {
+    try {
+      const content = await loadFileContent(cached);
+      if ((content.student || '') === (studentName || '')) return { fileId: cached, content };
+    } catch(e) { /* file non trovato/inaccessibile — ricerca da capo sotto */ }
+  }
+  const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
+  const fileId = await findStudentFile(fileName);
+  if (!fileId) return { fileId: null, content: null };
+  driveState.ownFileIds = driveState.ownFileIds || {};
+  driveState.ownFileIds[studentName] = fileId;
+  saveDriveState();
+  const content = await loadFileContent(fileId);
+  return { fileId, content };
+}
+
 // Shar Code "effettivo" per questo alunno: sia che sia stato ricevuto da una collega
 // (sharedShareCodes) sia che sia un proprio alunno già condiviso in passato (shareCode
 // salvato dentro il file Drive personale, vedi getStudentShareCode). In entrambi i casi
@@ -420,15 +445,9 @@ async function _getEffectiveShareCode(studentName) {
   const received = driveState.sharedShareCodes?.[studentName];
   if (received) return received;
   if (!driveState.folderId) return null;
-  const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
-  const fileId = driveState.ownFileIds?.[studentName] || await findStudentFile(fileName);
-  if (!fileId) return null;
-  driveState.ownFileIds = driveState.ownFileIds || {};
-  driveState.ownFileIds[studentName] = fileId;
-  saveDriveState();
   try {
-    const content = await loadFileContent(fileId);
-    return content.shareCode || null;
+    const { content } = await _findVerifiedOwnFile(studentName);
+    return content?.shareCode || null;
   } catch(e) { return null; }
 }
 
@@ -461,8 +480,7 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
 
   // Alunno proprio, mai condiviso: rinomina il file su Drive
   if (!driveState.folderId) return;
-  const oldFileName = `vocabolario-${sanitizeName(oldName || '_anonimo')}.json`;
-  const fileId = driveState.ownFileIds?.[oldName] || await findStudentFile(oldFileName);
+  const { fileId } = await _findVerifiedOwnFile(oldName);
   if (!fileId) return;
   const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
   await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
@@ -522,7 +540,7 @@ export async function saveStudentToDrive(studentName, dict, custom, labels = {})
     // Alunno proprio, mai condiviso: backup personale su Drive (drive.file, file creato da questa app)
     if (!driveState.folderId) return;
     const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
-    let fileId = driveState.ownFileIds?.[studentName] || await findStudentFile(fileName);
+    let { fileId } = await _findVerifiedOwnFile(studentName);
 
     const payload = JSON.stringify({
       dict:    dict   || {},
@@ -566,30 +584,9 @@ export async function loadStudentFromDrive(studentName) {
       return data || null;
     }
 
-    // Altrimenti cerca nel folder personale
+    // Altrimenti cerca nel folder personale (con autoverifica della cache)
     if (!driveState.folderId) return null;
-    const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
-    let fileId = driveState.ownFileIds?.[studentName];
-    let content = null;
-    if (fileId) {
-      // Autocorregge una cache ownFileIds corrotta (es. da test precedenti): se il
-      // file trovato in cache non corrisponde davvero a questo alunno, la scarta e
-      // ricerca da capo per nome — invece di restare bloccata su un file sbagliato.
-      try {
-        content = await loadFileContent(fileId);
-        if ((content.student || '') !== (studentName || '')) { fileId = null; content = null; }
-      } catch(e) { fileId = null; content = null; }
-    }
-    if (!fileId) {
-      fileId = await findStudentFile(fileName);
-      if (!fileId) return null;
-      content = await loadFileContent(fileId);
-    }
-
-    // Aggiorna cache
-    driveState.ownFileIds = driveState.ownFileIds || {};
-    driveState.ownFileIds[studentName] = fileId;
-    saveDriveState();
+    const { content } = await _findVerifiedOwnFile(studentName);
     return content;
   } catch(err) {
     console.error('[Drive] Errore caricamento:', err);
