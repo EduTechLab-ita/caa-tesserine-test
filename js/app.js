@@ -7,7 +7,7 @@ import {
   exportDictionary, importDictionaryFromFile,
   getStudentsList, getCurrentStudent, setCurrentStudent, addStudent, removeStudent,
   getLegacyDictionaryCount, loadDictionaryForStudent,
-  loadLabelsForStudent, saveLabelsForStudent,
+  loadLabelsForStudent, saveLabelsForStudent, purgeAllLocalData,
 } from './dictionary.js';
 
 import {
@@ -113,6 +113,37 @@ document.addEventListener('caa-drive-connected', () => {
   syncStudentListFromDrive();
 });
 
+// ── Aggiornamento "quasi tempo reale" per vocabolari condivisi ──────
+// Prima bisognava deselezionare e riselezionare l'alunno per vedere le tessere
+// aggiunte da una collega — non accettabile in classe (segnalato da Fabio
+// 18/07/2026). Due meccanismi leggeri, nessun polling aggressivo (vedi lezione
+// EduBoard: il laser a 50ms bruciava metà del limite Cloudflare):
+// 1. refresh quando la scheda torna in primo piano (a costo quasi zero)
+// 2. controllo periodico leggero (ogni 25s) SOLO mentre un alunno è selezionato
+async function _refreshCurrentStudentFromDrive() {
+  const name = getCurrentStudent();
+  if (!name || !isDriveConnected() || document.hidden) return;
+  const token = ++_selectorLoadToken;
+  const driveData = await loadStudentFromDrive(name);
+  if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
+  if (!driveData) return;
+  const newDict = driveData.dict || {};
+  if (JSON.stringify(newDict) === JSON.stringify(dictionary)) return; // nessuna novità
+  dictionary   = newDict;
+  customImages = driveData.custom || {};
+  customLabels = driveData.labels || {};
+  saveDictionary(dictionary);
+  saveCustomImages(customImages);
+  saveLabelsForStudent(name, customLabels);
+  if (tiles.length > 0) renderPages();
+  showStatus(`🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`, 'success');
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) _refreshCurrentStudentFromDrive();
+});
+setInterval(_refreshCurrentStudentFromDrive, 25000);
+
 // ── Link magico: ?condividi=CODICE ──────────────────────────────
 // Salva il codice in sessionStorage SUBITO (sopravvive al reload OAuth)
 const PENDING_SHARE_KEY = 'caa_pending_share_v1';
@@ -159,7 +190,18 @@ window._openDriveFolder = () => {
 };
 window._closeDriveModal = closeDriveModal;
 window._connectDrive    = connectToDrive;
-window._disconnectDrive = () => disconnectDrive(() => { updateStudentSelector(); });
+window._disconnectDrive = () => disconnectDrive(() => {
+  // Privacy PC condiviso di scuola (18/07/2026): con Drive connesso i dati vivono
+  // su Drive/Firebase — alla disconnessione non deve restare nessuna traccia
+  // locale (dizionari, immagini custom, nomi alunni) sul browser.
+  purgeAllLocalData();
+  updateStudentSelector('');
+  setCurrentStudent('');
+  dictionary   = loadDictionary();
+  customImages = loadCustomImagesForStudent('');
+  customLabels = loadLabelsForStudent('');
+  if (tiles.length > 0) renderPages();
+});
 // Costruisce il testo del messaggio di condivisione (riusato da copia e mailto)
 function _buildShareMessage(code, studentName) {
   const shareUrl = `${location.origin}${location.pathname}?condividi=${code}`;
@@ -1067,24 +1109,37 @@ function drawNoImage(doc, x, y, cell, imgSize, imgX) {
 // ══════════════════════════════════════════════════════════════════
 //  SELETTORE ALUNNO
 // ══════════════════════════════════════════════════════════════════
+// Incrementato ad ogni cambio alunno: se l'utente cambia di nuovo selezione mentre
+// un caricamento Drive precedente è ancora in corso, la risposta "vecchia" arriva
+// comunque ma va scartata — altrimenti può sovrascrivere il dizionario dell'alunno
+// SBAGLIATO (quello nel frattempo selezionato), contaminandolo. Causa reale di un
+// caso di dati mescolati tra due alunni segnalato da Fabio il 18/07/2026.
+let _selectorLoadToken = 0;
+
 function initStudentSelector() {
   updateStudentSelector();
 
   $('sel-student').addEventListener('change', async e => {
-    const name = e.target.value;
+    const name  = e.target.value;
+    const token = ++_selectorLoadToken;
     setCurrentStudent(name);
     dictionary   = loadDictionary();
     customImages = loadCustomImagesForStudent(name);
     customLabels = loadLabelsForStudent(name);
 
-    // Se Drive connesso, carica dizionario dal Drive per questo alunno
+    // Se Drive connesso, sostituisce col dizionario da Drive/Firebase (fonte
+    // autorevole) — NON un merge: una versione più vecchia in cache locale non deve
+    // poter far "resuscitare" una tessera cancellata altrove nel frattempo.
     if (isDriveConnected()) {
       const driveData = await loadStudentFromDrive(name);
+      if (token !== _selectorLoadToken) return; // l'utente ha cambiato alunno nel frattempo
       if (driveData) {
-        dictionary   = { ...dictionary,   ...driveData.dict   };
-        customImages = { ...customImages, ...driveData.custom };
+        dictionary   = driveData.dict   || {};
+        customImages = driveData.custom || {};
+        customLabels = driveData.labels || {};
         saveDictionary(dictionary);
         saveCustomImages(customImages);
+        saveLabelsForStudent(name, customLabels);
       }
     }
 
@@ -1127,7 +1182,7 @@ function initStudentSelector() {
     updateStudentSelector('');
     setCurrentStudent('');
     dictionary   = loadDictionary();
-    customImages = loadCustomImages();
+    customImages = loadCustomImagesForStudent('');
   });
 }
 

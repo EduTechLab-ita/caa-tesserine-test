@@ -409,6 +409,29 @@ export function isSharedStudent(studentName) {
   return !!(driveState.sharedShareCodes?.[studentName]);
 }
 
+// Shar Code "effettivo" per questo alunno: sia che sia stato ricevuto da una collega
+// (sharedShareCodes) sia che sia un proprio alunno già condiviso in passato (shareCode
+// salvato dentro il file Drive personale, vedi getStudentShareCode). In entrambi i casi
+// Firebase diventa la fonte di verità unica — altrimenti proprietario e destinatari
+// avrebbero due copie scollegate che non si aggiornano mai a vicenda (bug reale
+// segnalato da Fabio 18/07/2026: le colleghe aggiungevano tessere che il coordinatore
+// non vedeva mai, e le cancellazioni non si propagavano).
+async function _getEffectiveShareCode(studentName) {
+  const received = driveState.sharedShareCodes?.[studentName];
+  if (received) return received;
+  if (!driveState.folderId) return null;
+  const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
+  const fileId = driveState.ownFileIds?.[studentName] || await findStudentFile(fileName);
+  if (!fileId) return null;
+  driveState.ownFileIds = driveState.ownFileIds || {};
+  driveState.ownFileIds[studentName] = fileId;
+  saveDriveState();
+  try {
+    const content = await loadFileContent(fileId);
+    return content.shareCode || null;
+  } catch(e) { return null; }
+}
+
 // ── URL cartella CAArtella su Drive (null se non connesso) ────────
 export function getDriveFolderUrl() {
   if (!driveState.folderId) return null;
@@ -416,32 +439,26 @@ export function getDriveFolderUrl() {
 }
 
 // ── Salva dizionario alunno (Drive personale, o Firebase se condiviso) ──
+// NOTA (18/07/2026): niente più merge additivo con la versione remota. Un merge
+// {...remoto, ...locale} può solo AGGIUNGERE/sovrascrivere chiavi, mai rimuoverle —
+// quindi una tessera cancellata dall'utente riappariva sempre al salvataggio
+// successivo (bug reale segnalato da Fabio). Lo stato locale, caricato fresco alla
+// selezione dell'alunno (vedi loadStudentFromDrive), è l'unica versione autorevole:
+// si scrive quello così com'è (last-write-wins), niente merge.
 export async function saveStudentToDrive(studentName, dict, custom, labels = {}) {
   if (!isDriveConnected()) return;
 
   updateDriveButton('syncing');
 
   try {
-    const shareCode = driveState.sharedShareCodes?.[studentName];
+    const shareCode = await _getEffectiveShareCode(studentName);
 
     if (shareCode) {
-      // Alunno condiviso da una collega: merge read-write sul nodo Firebase condiviso
+      // Alunno condiviso (proprio, condiviso in passato, o ricevuto da una collega):
+      // Firebase è la fonte di verità unica per tutti.
       const token = await _fbAuthToken();
-      let mergedDict = { ...dict }, mergedCustom = { ...custom }, mergedLabels = { ...labels };
-      try {
-        const getResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
-        if (getResp.ok) {
-          const existing = await getResp.json();
-          if (existing) {
-            mergedDict   = { ...existing.dict,   ...dict };
-            mergedCustom = { ...existing.custom, ...custom };
-            mergedLabels = { ...(existing.labels || {}), ...labels };
-          }
-        }
-      } catch(e) { /* usa dati locali */ }
-
       const payload = JSON.stringify({
-        dict: mergedDict, custom: mergedCustom, labels: mergedLabels,
+        dict: dict || {}, custom: custom || {}, labels: labels || {},
         student: studentName, updatedAt: new Date().toISOString(),
       });
       const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
@@ -452,35 +469,20 @@ export async function saveStudentToDrive(studentName, dict, custom, labels = {})
       updateDriveButton('connected');
       flashSaved();
       showDriveToast(`✅ Vocabolario di "${studentName || 'Anonimo'}" salvato (condiviso)`);
-      return mergedDict;
+      return dict;
     }
 
-    // Alunno proprio: backup personale su Drive (drive.file, file creato da questa app)
+    // Alunno proprio, mai condiviso: backup personale su Drive (drive.file, file creato da questa app)
     if (!driveState.folderId) return;
     const fileName = `vocabolario-${sanitizeName(studentName || '_anonimo')}.json`;
     let fileId = driveState.ownFileIds?.[studentName] || await findStudentFile(fileName);
 
-    let mergedDict = { ...dict }, mergedCustom = { ...custom }, mergedLabels = { ...labels };
-    let existingShareCode = null;
-
-    // Merge con versione Drive (evita perdite in uso simultaneo) + preserva shareCode già generato
-    if (fileId) {
-      try {
-        const existing  = await loadFileContent(fileId);
-        mergedDict   = { ...existing.dict,   ...dict };
-        mergedCustom = { ...existing.custom, ...custom };
-        mergedLabels = { ...(existing.labels || {}), ...labels };
-        existingShareCode = existing.shareCode || null;
-      } catch(e) { /* usa dati locali */ }
-    }
-
     const payload = JSON.stringify({
-      dict:    mergedDict,
-      custom:  mergedCustom,
-      labels:  mergedLabels,
+      dict:    dict   || {},
+      custom:  custom || {},
+      labels:  labels || {},
       student: studentName,
       savedAt: new Date().toISOString(),
-      ...(existingShareCode ? { shareCode: existingShareCode } : {})
     });
 
     if (!fileId) {
@@ -496,7 +498,7 @@ export async function saveStudentToDrive(studentName, dict, custom, labels = {})
     updateDriveButton('connected');
     flashSaved();
     showDriveToast(`✅ Vocabolario di "${studentName || 'Anonimo'}" salvato su Drive`);
-    return mergedDict;
+    return dict;
   } catch(err) {
     updateDriveButton('error');
     console.error('[Drive] Errore salvataggio:', err);
@@ -508,7 +510,7 @@ export async function loadStudentFromDrive(studentName) {
   if (!isDriveConnected()) return null;
 
   try {
-    const shareCode = driveState.sharedShareCodes?.[studentName];
+    const shareCode = await _getEffectiveShareCode(studentName);
     if (shareCode) {
       const token = await _fbAuthToken();
       const resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);

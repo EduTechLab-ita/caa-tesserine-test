@@ -156,6 +156,32 @@ export function saveLabelsForStudent(studentName, labels) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  PRIVACY — pulizia dati locali (PC condiviso di scuola, 18/07/2026)
+// ══════════════════════════════════════════════════════════════════
+
+/** Rimuove OGNI dato alunno salvato in locale (dizionari, immagini custom,
+ *  etichette, lista alunni con nomi) — chiamata alla disconnessione da Drive.
+ *  Con Drive connesso i dati vivono su Drive/Firebase, non nel browser: su un
+ *  PC condiviso della scuola non deve restare traccia dopo che ci si disconnette. */
+export function purgeAllLocalData() {
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (
+      key.startsWith('caa_dict_v2_')   ||
+      key.startsWith('caa_custom_v2_') ||
+      key.startsWith('caa_labels_v1_') ||
+      key === STUDENTS_KEY ||
+      key === LEGACY_KEY   ||
+      key === 'caa_custom_images_v1'
+    )) {
+      toRemove.push(key);
+    }
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  EXPORT / IMPORT
 // ══════════════════════════════════════════════════════════════════
 
