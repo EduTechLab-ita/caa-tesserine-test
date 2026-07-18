@@ -203,6 +203,25 @@ window._copyShareCode   = async () => {
     ));
 };
 
+// Versione breve del messaggio, SOLO per mailto: i link mailto: hanno un limite
+// pratico di ~2000 caratteri (Windows ShellExecute tronca/ignora l'URL oltre questa
+// soglia, senza errore visibile) — il messaggio completo di _buildShareMessage() è
+// troppo lungo. "Copia messaggio" invece non ha questo limite (va nella clipboard).
+function _buildShareMessageShort(code, studentName) {
+  const shareUrl = `https://edutechlab.it/caa-tesserine/?condividi=${code}`;
+  return `📚 Ti condivido il vocabolario CAA di "${studentName}" tramite CAArtella.
+
+Apri questo link, si collega tutto in automatico:
+👉 ${shareUrl}
+
+Poi clicca "Collega a Google Drive" (accedi col tuo account Google scolastico) e infine "Carica".
+
+⚠️ Se Google mostra "app non verificata": clicca "Avanzate" → "Vai su edutechlab.it" → autorizza. È normale per le app della scuola, capita solo la prima volta.
+
+Se il link non si apre, apri https://edutechlab.it/caa-tesserine/, clicca "Drive", collegati e incolla questo codice:
+👉 ${code}`;
+}
+
 // Apre il client email con oggetto e messaggio già pronti (destinatario da compilare:
 // col proprio account scolastico l'autocomplete della rubrica lo suggerisce da solo)
 window._emailShareCode = async () => {
@@ -212,7 +231,7 @@ window._emailShareCode = async () => {
 
   await makeShareReady(code, studentName, dictionary, customImages, customLabels);
 
-  const msg     = _buildShareMessage(code, studentName);
+  const msg     = _buildShareMessageShort(code, studentName);
   const subject = `Vocabolario CAA condiviso — ${studentName || 'alunno'} (CAArtella)`;
   const mailto  = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(msg)}`;
   window.location.href = mailto;
