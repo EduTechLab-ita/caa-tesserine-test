@@ -464,6 +464,60 @@ async function _getEffectiveShareCode(studentName) {
   } catch(e) { return null; }
 }
 
+// Versione pubblica di _getEffectiveShareCode — usata da app.js per decidere se
+// (e a cosa) aprire una sottoscrizione push in tempo reale (vedi subscribeSharedStudent).
+export async function getShareCodeForStudent(studentName) {
+  return _getEffectiveShareCode(studentName);
+}
+
+// ── Sottoscrizione push in tempo reale a un vocabolario condiviso ────────
+// FIX (19/07/2026, ripensamento architetturale su richiesta di Fabio): sostituisce
+// il polling ogni 25s con una connessione persistente a Firebase via Server-Sent
+// Events sulla REST API (nessun SDK Firebase necessario — stesso pattern "token
+// nella query string" già usato per le chiamate REST esistenti). Consumo quasi
+// zero quando nessuno modifica nulla: Firebase manda un evento SOLO quando il
+// nodo cambia davvero, non c'è alcuna richiesta periodica di fondo.
+// Ad ogni evento ricarica l'intero nodo con una GET normale invece di provare a
+// interpretare il payload `put`/`patch` dell'evento stesso — più semplice e
+// robusto, non serve reimplementare la logica di merge-patch di Firebase lato
+// client. Ritorna una funzione di annullamento sottoscrizione.
+export function subscribeSharedStudent(shareCode, onChange) {
+  let es = null;
+  let closed = false;
+  let retryTimer = null;
+
+  async function connect() {
+    if (closed) return;
+    let token;
+    try { token = await _fbAuthToken(); } catch(e) { retry(); return; }
+    if (closed) return;
+    es = new EventSource(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
+    const trigger = () => { if (!closed) onChange(); };
+    es.addEventListener('put', trigger);
+    es.addEventListener('patch', trigger);
+    es.onerror = () => {
+      // Token scaduto o connessione caduta (es. rete assente per un attimo) —
+      // richiude e riprova con un token fresco dopo una breve pausa fissa
+      // (nessun backoff aggressivo: non è un caso critico, solo pochi utenti alla volta).
+      if (es) es.close();
+      retry();
+    };
+  }
+
+  function retry() {
+    if (closed || retryTimer) return;
+    retryTimer = setTimeout(() => { retryTimer = null; connect(); }, 5000);
+  }
+
+  connect();
+
+  return function unsubscribe() {
+    closed = true;
+    if (retryTimer) clearTimeout(retryTimer);
+    if (es) es.close();
+  };
+}
+
 // ── Rinomina un alunno (proprio o condiviso), propagando la modifica ─────
 // Alunno condiviso (proprio già condiviso, o ricevuto): riscrive il campo
 // "student" su Firebase — chiunque altro veda questo shareCode lo scoprirà al

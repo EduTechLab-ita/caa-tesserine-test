@@ -18,6 +18,7 @@ import {
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
   isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
+  getShareCodeForStudent, subscribeSharedStudent,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -108,20 +109,26 @@ initStudentSelector();
 loadDriveConfig(() => {
   // Drive connesso al caricamento pagina (token già valido o silent auth)
   syncStudentListFromDrive();
+  _resubscribeLive(getCurrentStudent());
 });
 
 // Drive connesso dopo login manuale (click sul pulsante) — es. Chromebook pulito
 document.addEventListener('caa-drive-connected', () => {
   syncStudentListFromDrive();
+  _resubscribeLive(getCurrentStudent());
 });
 
-// ── Aggiornamento "quasi tempo reale" per vocabolari condivisi ──────
+// ── Aggiornamento in tempo reale per vocabolari condivisi ──────────
 // Prima bisognava deselezionare e riselezionare l'alunno per vedere le tessere
 // aggiunte da una collega — non accettabile in classe (segnalato da Fabio
-// 18/07/2026). Due meccanismi leggeri, nessun polling aggressivo (vedi lezione
-// EduBoard: il laser a 50ms bruciava metà del limite Cloudflare):
-// 1. refresh quando la scheda torna in primo piano (a costo quasi zero)
-// 2. controllo periodico leggero (ogni 25s) SOLO mentre un alunno è selezionato
+// 18/07/2026). Fix iniziale (18/07/2026): refresh al ritorno in primo piano +
+// controllo periodico ogni 25s. RIPENSATO (19/07/2026, richiesta di Fabio): il
+// polling ogni 25s consuma banda anche quando nessuno modifica nulla — sostituito
+// con una sottoscrizione push (subscribeSharedStudent, vedi drive.js): Firebase
+// avvisa l'app SOLO quando il vocabolario condiviso selezionato cambia davvero,
+// consumo pressoché zero se nessuno tocca nulla. Il refresh al ritorno in primo
+// piano resta come rete di sicurezza (i browser possono sospendere le connessioni
+// EventSource in background, specie su tablet/mobile).
 // Adotta in locale una rinomina fatta altrove (proprietario o una collega hanno
 // cliccato "rinomina" sul loro lato) — il nuovo nome è già la fonte di verità
 // remota (Firebase), qui si allinea la copia locale.
@@ -179,7 +186,20 @@ async function _refreshCurrentStudentFromDrive() {
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) _refreshCurrentStudentFromDrive();
 });
-setInterval(_refreshCurrentStudentFromDrive, 25000);
+
+// ── Sottoscrizione push all'alunno condiviso attualmente selezionato ─────
+// Una sola sottoscrizione attiva alla volta (quella dell'alunno in vista) — non
+// serve ascoltare tutti i vocabolari condivisi contemporaneamente, solo quello
+// che l'utente sta guardando in questo momento. getShareCodeForStudent ritorna
+// null per un alunno non condiviso: in quel caso non si apre nessuna connessione.
+let _liveUnsubscribe = null;
+async function _resubscribeLive(name) {
+  if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
+  if (!name || !isDriveConnected()) return;
+  const shareCode = await getShareCodeForStudent(name);
+  if (!shareCode) return;
+  _liveUnsubscribe = subscribeSharedStudent(shareCode, _refreshCurrentStudentFromDrive);
+}
 
 // ── Link magico: ?condividi=CODICE ──────────────────────────────
 // Salva il codice in sessionStorage SUBITO (sopravvive al reload OAuth)
@@ -231,6 +251,7 @@ window._disconnectDrive = () => disconnectDrive(() => {
   // Privacy PC condiviso di scuola (18/07/2026): con Drive connesso i dati vivono
   // su Drive/Firebase — alla disconnessione non deve restare nessuna traccia
   // locale (dizionari, immagini custom, nomi alunni) sul browser.
+  if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
   purgeAllLocalData();
   updateStudentSelector('');
   setCurrentStudent('');
@@ -1177,6 +1198,7 @@ function initStudentSelector() {
     dictionary   = loadDictionary();
     customImages = loadCustomImagesForStudent(name);
     customLabels = loadLabelsForStudent(name);
+    _resubscribeLive(name); // ascolta in tempo reale solo l'alunno ora in vista
 
     // Se Drive connesso, sostituisce col dizionario da Drive/Firebase (fonte
     // autorevole) — NON un merge: una versione più vecchia in cache locale non deve
