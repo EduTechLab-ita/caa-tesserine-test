@@ -1143,6 +1143,20 @@ function drawNoImage(doc, x, y, cell, imgSize, imgX) {
 // caso di dati mescolati tra due alunni segnalato da Fabio il 18/07/2026.
 let _selectorLoadToken = 0;
 
+// Nasconde/azzera l'anteprima tessere (griglia + stato "Vocabolario completo") —
+// usata quando cambia l'alunno selezionato. FIX (19/07/2026, segnalato da Fabio):
+// prima la preview restava esposta con le tessere del vecchio alunno anche dopo
+// il cambio (o addirittura in modalità "uso generico", che deve restare vuota) —
+// il cambio alunno si limitava a ri-renderizzare le STESSE parole sul dizionario
+// nuovo invece di svuotare, perché la preview è legata al testo elaborato per uno
+// specifico alunno e perde senso non appena si cambia contesto.
+function clearPreview() {
+  tiles = [];
+  pagesContainer.innerHTML = '';
+  secPreview.classList.add('hidden');
+  statusDiv.classList.add('hidden');
+}
+
 function initStudentSelector() {
   updateStudentSelector();
 
@@ -1171,8 +1185,9 @@ function initStudentSelector() {
     }
 
     _updateRemoveBtn(name);
-    // Se c'erano tessere visibili, aggiorna la preview col nuovo dizionario
-    if (tiles.length > 0) renderPages();
+    // Cambio alunno: l'anteprima tessere si riferisce al testo elaborato per
+    // l'alunno precedente, va sempre azzerata (non ri-renderizzata sul nuovo dizionario).
+    clearPreview();
   });
 
   $('btn-add-student').addEventListener('click', async () => {
@@ -1184,6 +1199,7 @@ function initStudentSelector() {
     setCurrentStudent(trimmed);
     dictionary   = loadDictionary();
     customImages = loadCustomImagesForStudent(trimmed);
+    clearPreview();
 
     // Migrazione: se esisteva vecchio dizionario anonimo, chiedi se importarlo
     const legacyCount = getLegacyDictionaryCount();
@@ -1210,6 +1226,7 @@ function initStudentSelector() {
     setCurrentStudent('');
     dictionary   = loadDictionary();
     customImages = loadCustomImagesForStudent('');
+    clearPreview();
   });
 
   // Rinomina alunno (es. correggere un errore di battitura) — se l'alunno è
