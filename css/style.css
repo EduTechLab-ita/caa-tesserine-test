@@ -432,6 +432,29 @@ footer a:hover { text-decoration: underline; }
 }
 .btn-info:hover { background: rgba(255,255,255,0.32); }
 
+/* Due pulsanti tondi adiacenti nell'header (🔔 avvisi + ⓘ info): solo il primo
+   deve spingersi a destra con margin-left:auto, altrimenti si allontanano tra loro. */
+.header-inner .btn-info + .btn-info { margin-left: 0; }
+
+/* ── CAMPANELLA AVVISI (19/07/2026) ──────────────────────────────── */
+.btn-updates {
+  position: relative;
+  font-style: normal;
+  font-family: inherit;
+  font-size: 1.15rem;
+}
+.btn-updates-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ef4444;
+  border: 2px solid #6d28d9;
+  animation: drive-pulse-red 1.6s ease-in-out infinite;
+}
+
 /* ── PANNELLO INFO ─────────────────────────────────────────────── */
 .info-modal {
   max-width: 560px;

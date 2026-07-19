@@ -189,7 +189,27 @@ async function _refreshCurrentStudentFromDrive() {
   saveLabelsForStudent(name, customLabels);
   if (tiles.length > 0) renderPages();
   showStatus(`🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`, 'success');
+  _showUpdateBadge(name);
 }
+
+// ── Campanella avvisi (19/07/2026) ──────────────────────────────────
+// FIX: il messaggio "🔄 Vocabolario aggiornato" sopra scrive dentro alla pagina
+// (#status) — se l'utente è scrollato in alto (es. sta guardando il selettore
+// alunno) non lo vede mai (segnalato da Fabio). La campanella nell'header resta
+// sempre in vista indipendentemente dallo scroll, col badge rosso finché non la
+// si clicca — stesso pattern del badge foto EduConnect→EduBoard.
+function _showUpdateBadge(name) {
+  const badge = document.getElementById('btn-updates-badge');
+  const btn   = document.getElementById('btn-updates');
+  if (badge) badge.style.display = 'block';
+  if (btn) btn.title = `Vocabolario di "${name}" aggiornato da una collega — clicca per confermare`;
+}
+document.getElementById('btn-updates')?.addEventListener('click', () => {
+  const badge = document.getElementById('btn-updates-badge');
+  const btn   = document.getElementById('btn-updates');
+  if (badge) badge.style.display = 'none';
+  if (btn) btn.title = 'Nessun avviso';
+});
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) _refreshCurrentStudentFromDrive();

@@ -29,9 +29,18 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.21</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.22</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
+      <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
+           aggiornato" che scriveva a metà pagina e passava inosservato se si era
+           scrollati in alto (segnalato da Fabio 19/07/2026). Sempre in vista
+           nell'header, badge rosso quando arriva un aggiornamento da una collega,
+           si nasconde al clic — stesso pattern del badge foto EduConnect→EduBoard. -->
+      <button id="btn-updates" class="btn-info btn-updates" title="Nessun avviso" aria-label="Avvisi vocabolari">
+        🔔
+        <span id="btn-updates-badge" class="btn-updates-badge" style="display:none"></span>
+      </button>
       <button id="btn-info" class="btn-info" title="Come si usa?" aria-label="Guida">i</button>
     </div>
   </header>
