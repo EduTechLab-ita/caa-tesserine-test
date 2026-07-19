@@ -17,6 +17,7 @@ import {
   connectSharedFile, isSharedStudent, getStudentShareCode, getDriveFolderUrl,
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
+  isOwnStudent, deleteStudentFromDrive,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -1217,11 +1218,57 @@ function initStudentSelector() {
     _updateRemoveBtn(trimmed);
   });
 
-  $('btn-remove-student').addEventListener('click', () => {
+  // FIX (19/07/2026, richiesta esplicita di Fabio): prima il pulsante ✕ toglieva
+  // l'alunno solo dall'elenco locale, MAI dal file reale su Drive — confusionario,
+  // perché sembrava un'eliminazione ma i dati (anche quelli condivisi con le
+  // colleghe) restavano sempre lì. Ora offre due percorsi distinti: rimozione
+  // leggera (solo elenco locale, reversibile) oppure eliminazione definitiva da
+  // Drive (irreversibile, doppia conferma). L'eliminazione definitiva è permessa
+  // SOLO al proprietario del vocabolario (isOwnStudent) — chi ha solo ricevuto una
+  // condivisione da una collega non può mai cancellare il file di qualcun altro,
+  // può solo togliersi la voce dal proprio elenco.
+  $('btn-remove-student').addEventListener('click', async () => {
     const name = getCurrentStudent();
     if (!name) return;
-    if (!confirm(`Rimuovi "${name}" dalla lista? Il dizionario salvato non viene eliminato.`)) return;
+
+    const isOwner = isDriveConnected() && await isOwnStudent(name);
+
+    const removeOnly = confirm(
+      `Rimuovere "${name}" solo dal tuo elenco?\n` +
+      `Il vocabolario resta salvato su Drive: potrai ritrovarlo riconnettendoti.\n\n` +
+      (isOwner
+        ? `Premi Annulla per eliminarlo invece DEFINITIVAMENTE da Drive.`
+        : `(non sei il proprietario di questo vocabolario condiviso: non puoi eliminarlo da Drive, solo toglierlo dal tuo elenco)`)
+    );
+
+    if (removeOnly) {
+      removeStudent(name);
+      updateStudentSelector('');
+      setCurrentStudent('');
+      dictionary   = loadDictionary();
+      customImages = loadCustomImagesForStudent('');
+      clearPreview();
+      return;
+    }
+
+    if (!isOwner) return; // annullato, e comunque non eliminabile da qui
+
+    const reallyDelete = confirm(
+      `⚠️ ATTENZIONE: stai per ELIMINARE DEFINITIVAMENTE il vocabolario di "${name}" da Drive.\n` +
+      `Se lo avevi condiviso con delle colleghe, anche loro perderanno l'accesso ai dati.\n` +
+      `Questa azione NON si può annullare.\n\nProcedere?`
+    );
+    if (!reallyDelete) return;
+
+    try {
+      await deleteStudentFromDrive(name);
+      showDriveToast(`🗑️ Vocabolario di "${name}" eliminato definitivamente da Drive`);
+    } catch(err) {
+      showStatus(`⚠️ Eliminazione da Drive fallita: ${err.message}`, 'error');
+      return;
+    }
     removeStudent(name);
+    deleteStudentData(name);
     updateStudentSelector('');
     setCurrentStudent('');
     dictionary   = loadDictionary();

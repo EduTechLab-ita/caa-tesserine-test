@@ -521,6 +521,46 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
   }
 }
 
+// ── Controlla se l'alunno è "proprio" (esiste un file Drive personale) ───
+// Usato per decidere se mostrare l'eliminazione definitiva: un vocabolario
+// ricevuto da una collega (solo riferimento Firebase, nessun file Drive
+// personale) non è eliminabile da chi lo riceve — solo dal proprietario
+// (richiesta esplicita di Fabio 19/07/2026).
+export async function isOwnStudent(studentName) {
+  if (!isDriveConnected() || !driveState.folderId) return false;
+  try {
+    const { fileId } = await _findVerifiedOwnFile(studentName);
+    return !!fileId;
+  } catch(e) { return false; }
+}
+
+// ── Elimina DEFINITIVAMENTE il vocabolario di un alunno proprio ──────────
+// Cancella il file Drive personale e, se l'alunno era condiviso, anche il nodo
+// Firebase corrispondente — le colleghe con cui era condiviso perdono l'accesso
+// (comportamento voluto: l'eliminazione deve essere totale, non lasciare copie
+// residue in giro). Azione distruttiva e irreversibile: la doppia conferma va
+// fatta lato UI PRIMA di chiamare questa funzione (vedi app.js). Non fa nulla se
+// l'alunno non è proprio (isOwnStudent false) — non tocca mai il file di altri.
+export async function deleteStudentFromDrive(studentName) {
+  if (!isDriveConnected() || !driveState.folderId) return;
+  const { fileId, content } = await _findVerifiedOwnFile(studentName);
+  if (!fileId) return;
+
+  if (content?.shareCode) {
+    try {
+      const token = await _fbAuthToken();
+      await fetch(`${FIREBASE_DB_URL}/caartella-shared/${content.shareCode}.json?auth=${token}`, { method: 'DELETE' });
+    } catch(e) { /* non bloccante: procede comunque con l'eliminazione del file Drive */ }
+  }
+
+  await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'DELETE');
+
+  if (driveState.ownFileIds?.[studentName]) {
+    delete driveState.ownFileIds[studentName];
+    saveDriveState();
+  }
+}
+
 // ── URL cartella CAArtella su Drive (null se non connesso) ────────
 export function getDriveFolderUrl() {
   if (!driveState.folderId) return null;
@@ -697,7 +737,11 @@ async function driveApiFetch(url, method, body) {
   }
   const resp = await fetch(url, opts);
   if (!resp.ok) throw new Error('Drive API error ' + resp.status);
-  return resp.json();
+  // Una DELETE riuscita risponde 204 senza corpo — .json() andrebbe in errore
+  // anche se l'operazione è riuscita (usato da deleteStudentFromDrive).
+  if (resp.status === 204) return null;
+  const text = await resp.text();
+  return text ? JSON.parse(text) : null;
 }
 
 async function findStudentFile(fileName) {
