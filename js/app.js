@@ -82,6 +82,7 @@ const chkStop        = $('chk-stopwords');
 const btnGenerate    = $('btn-generate');
 const btnPrintVocab  = $('btn-print-vocab');
 const statusDiv      = $('status');
+const statusBanner   = $('status-banner');
 const secPreview     = $('sec-preview');
 const lblCount       = $('lbl-count');
 const lblPages       = $('lbl-pages');
@@ -174,20 +175,30 @@ async function _refreshCurrentStudentFromDrive() {
   // Qualcun altro ha rinominato questo alunno (proprietario o collega) — adotta
   // il nuovo nome in locale così la modifica si propaga anche senza intervento.
   const remoteName = driveData.student;
+  let wasRenamed = false;
   if (remoteName && remoteName !== name && !getStudentsList().includes(remoteName)) {
     _adoptRemoteRename(name, remoteName);
     name = remoteName;
+    wasRenamed = true;
   }
 
   const newDict = driveData.dict || {};
-  if (JSON.stringify(newDict) === JSON.stringify(dictionary)) return; // nessuna novità
-  dictionary   = newDict;
-  customImages = driveData.custom || {};
-  customLabels = driveData.labels || {};
-  saveDictionary(dictionary);
-  saveCustomImages(customImages);
-  saveLabelsForStudent(name, customLabels);
-  if (tiles.length > 0) renderPages();
+  const dictChanged = JSON.stringify(newDict) !== JSON.stringify(dictionary);
+  // FIX (19/07/2026, bug trovato da Fabio): prima si usciva qui se il dizionario
+  // non era cambiato — ma una rinomina PURA (nessuna parola aggiunta/tolta, solo
+  // il nome) non cambia mai il dizionario, quindi la campanella non scattava mai
+  // per una semplice rinomina, anche se _adoptRemoteRename sopra aveva già
+  // funzionato. Ora l'uscita anticipata vale solo se non è cambiato NULLA.
+  if (!dictChanged && !wasRenamed) return;
+  if (dictChanged) {
+    dictionary   = newDict;
+    customImages = driveData.custom || {};
+    customLabels = driveData.labels || {};
+    saveDictionary(dictionary);
+    saveCustomImages(customImages);
+    saveLabelsForStudent(name, customLabels);
+    if (tiles.length > 0) renderPages();
+  }
   showStatus(`🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`, 'success');
   _showUpdateBadge(name);
 }
@@ -1526,8 +1537,17 @@ function scheduleDriveSync() {
 }
 
 // ── Utility ────────────────────────────────────────────────────
+let _statusBannerTimer = null;
 function showStatus(msg, type = '') {
   statusDiv.textContent = msg;
   statusDiv.className   = `status ${type}`;
   statusDiv.classList.remove('hidden');
+
+  // Echo in sovraimpressione sempre visibile, indipendente dallo scroll (vedi nota CSS)
+  if (statusBanner) {
+    clearTimeout(_statusBannerTimer);
+    statusBanner.textContent = msg;
+    statusBanner.className   = `status-banner show ${type}`;
+    _statusBannerTimer = setTimeout(() => statusBanner.classList.remove('show'), 4500);
+  }
 }

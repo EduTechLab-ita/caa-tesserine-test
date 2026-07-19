@@ -29,7 +29,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.22</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.23</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -64,6 +64,13 @@
   <div id="drive-toast" class="drive-toast no-print">
     <span class="drive-toast-msg">✅ Dizionario salvato su Drive</span>
   </div>
+
+  <!-- Banner di stato in sovraimpressione (19/07/2026, richiesta ripetuta di
+       Fabio): #status più sotto scrive dentro al flusso della pagina — se si è
+       scrollati in alto (es. sul selettore alunno) il messaggio passa
+       inosservato. Questo banner fisso in alto ripete lo stesso messaggio,
+       sempre visibile indipendentemente dallo scroll, si nasconde da solo. -->
+  <div id="status-banner" class="status-banner no-print"></div>
 
   <!-- ── PANNELLO INFO ─────────────────────────────────────────────── -->
   <div id="info-overlay" class="modal-overlay hidden">
