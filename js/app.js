@@ -17,7 +17,7 @@ import {
   connectSharedFile, isSharedStudent, getStudentShareCode, getDriveFolderUrl,
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
-  isOwnStudent, deleteStudentFromDrive,
+  isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -123,9 +123,17 @@ document.addEventListener('caa-drive-connected', () => {
 // 1. refresh quando la scheda torna in primo piano (a costo quasi zero)
 // 2. controllo periodico leggero (ogni 25s) SOLO mentre un alunno è selezionato
 // Adotta in locale una rinomina fatta altrove (proprietario o una collega hanno
-// cliccato "rinomina" sul loro lato) — NON scrive nulla su Drive/Firebase, il
-// nuovo nome è già la fonte di verità remota, qui si allinea solo la copia locale.
-function _adoptRemoteRename(oldName, newName) {
+// cliccato "rinomina" sul loro lato) — il nuovo nome è già la fonte di verità
+// remota (Firebase), qui si allinea la copia locale.
+// FIX (19/07/2026): quando a rinominare è una COLLEGA (non proprietaria), può
+// aggiornare solo Firebase — non può rinominare il file sul Drive del
+// proprietario (Google non lo permette). Bug reale osservato da Fabio: il file
+// Drive restava con il vecchio nome per sempre, e al refresh successivo
+// ricompariva un doppione. Ora, se QUESTA sessione è quella del proprietario
+// (syncOwnFileNameToDrive controlla da sola ed esce senza fare nulla se non lo
+// è), allinea anche il file Drive — il doppione si autorisolve al giro di sync
+// successivo perché il nome sul Drive torna a coincidere con quello adottato qui.
+async function _adoptRemoteRename(oldName, newName) {
   const dictToMove   = loadDictionaryForStudent(oldName);
   const labelsToMove = loadLabelsForStudent(oldName);
   const imagesToMove = loadCustomImagesForStudent(oldName);
@@ -137,6 +145,7 @@ function _adoptRemoteRename(oldName, newName) {
   renameStudentInList(oldName, newName);
   setCurrentStudent(newName);
   updateStudentSelector(newName);
+  syncOwnFileNameToDrive(oldName, newName); // no-op se questa sessione non è la proprietaria
 }
 
 async function _refreshCurrentStudentFromDrive() {

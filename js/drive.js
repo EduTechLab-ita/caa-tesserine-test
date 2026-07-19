@@ -499,26 +499,69 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
       delete driveState.sharedShareCodes[oldName];
       driveState.sharedShareCodes[newName] = shareCode;
       saveDriveState();
+
+      // Aggiorna anche l'indice persistito su Drive (indice-condivisi.json), altrimenti
+      // al prossimo reconnect restoreSharedIndex() ripristina il nome vecchio — bug reale
+      // (19/07/2026): una collega rinominava "EMMA ROSSINI" in "EMMA", disconnetteva e
+      // riconnetteva, e ricompariva "EMMA ROSSINI". Causa: sharedShareCodes vive solo in
+      // memoria di sessione (per privacy su PC condivisi, vedi nota in cima al file), quindi
+      // l'indice su Drive è l'UNICA fonte che sopravvive a un reload — se non si aggiorna
+      // anche lui, la rinomina si perde ad ogni riconnessione.
+      try {
+        const entries = await loadSharedIndex();
+        const entry = entries.find(e => e.code === shareCode);
+        if (entry) entry.name = newName; else entries.push({ name: newName, code: shareCode });
+        await saveSharedIndex(entries);
+      } catch(e) { /* non bloccante: il nome resta comunque aggiornato per questa sessione */ }
     }
   }
 
   // Alunno proprio (file Drive personale trovato): rinomina anche lì, indipendentemente
   // dal ramo Firebase sopra — un alunno condiviso ha comunque un file Drive personale.
-  if (fileId) {
-    const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
-    await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
-    try {
-      const freshContent = await loadFileContent(fileId);
-      freshContent.student = newName;
-      await updateDriveFile(fileId, JSON.stringify(freshContent));
-    } catch(e) { /* non bloccante */ }
+  if (fileId) await _renameOwnFile(fileId, oldName, newName);
+}
 
-    if (driveState.ownFileIds?.[oldName]) {
-      delete driveState.ownFileIds[oldName];
-      driveState.ownFileIds[newName] = fileId;
-      saveDriveState();
-    }
+// ── Rinomina il file Drive proprio (nome file + campo "student" interno) ──
+// Helper condiviso da renameStudentOnDrive (rinomina diretta) e da
+// syncOwnFileNameToDrive (auto-allineamento, vedi sotto).
+async function _renameOwnFile(fileId, oldName, newName) {
+  const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
+  await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
+  try {
+    const freshContent = await loadFileContent(fileId);
+    freshContent.student = newName;
+    await updateDriveFile(fileId, JSON.stringify(freshContent));
+  } catch(e) { /* non bloccante */ }
+
+  if (driveState.ownFileIds?.[oldName]) {
+    delete driveState.ownFileIds[oldName];
+    driveState.ownFileIds[newName] = fileId;
+    saveDriveState();
   }
+}
+
+// ── Allinea il nome del file Drive proprio dopo una rinomina fatta da una
+// collega (o dal proprietario da un altro dispositivo) ────────────────────
+// Un vocabolario condiviso può essere rinominato via Firebase da CHIUNQUE
+// abbia accesso (proprietario o collega) — ma solo la sessione del
+// PROPRIETARIO può fisicamente rinominare il file sul proprio Drive (Google
+// non permette a un altro account di farlo). Bug reale (19/07/2026): quando
+// una collega rinominava un alunno condiviso, Firebase si aggiornava subito,
+// ma il file Drive del proprietario restava col nome vecchio per sempre — al
+// refresh successivo il proprietario vedeva un doppione (nome vecchio dal file
+// Drive mai rinominato + nome nuovo adottato in locale da Firebase). Questa
+// funzione va chiamata dal lato proprietario ogni volta che si scopre — tramite
+// il refresh periodico — che Firebase ha un nome diverso da quello del proprio
+// file: se questa sessione è davvero la proprietaria, allinea anche Drive: il
+// doppione si autorisolve al giro di sync successivo. Non fa nulla (nessun
+// errore) se questa sessione non possiede un file proprio per oldName — cioè
+// se a chiamarla è la sessione di una collega, non del proprietario.
+export async function syncOwnFileNameToDrive(oldName, newName) {
+  if (!isDriveConnected() || !driveState.folderId) return;
+  try {
+    const { fileId } = await _findVerifiedOwnFile(oldName);
+    if (fileId) await _renameOwnFile(fileId, oldName, newName);
+  } catch(e) { /* non bloccante: il prossimo refresh riproverà */ }
 }
 
 // ── Controlla se l'alunno è "proprio" (esiste un file Drive personale) ───
