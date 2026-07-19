@@ -29,23 +29,27 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.17</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.18</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <button id="btn-info" class="btn-info" title="Come si usa?" aria-label="Guida">i</button>
-      <button id="drive-btn" class="drive-fab no-print" onclick="window._openDriveModal()" title="Google Drive">
-        <span class="drive-fab-inner">
-          <svg id="drive-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-            <circle cx="12" cy="8" r="4"/>
-            <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
-          </svg>
-          <img id="drive-fab-photo" src="" alt="" style="display:none;">
-        </span>
-        <span id="drive-fab-check" class="drive-fab-check" style="display:none">✓</span>
-        <span id="drive-fab-badge" class="drive-fab-badge" style="display:none"></span>
-      </button>
     </div>
   </header>
+
+  <!-- Pulsante Drive/account — fisso in basso a destra, stile EduBoard (19/07/2026,
+       richiesta estetica di Fabio: prima stava nell'header insieme a ⓘ, affollato
+       specie su tablet/LIM; qui resta sempre raggiungibile senza appesantire l'header) -->
+  <button id="drive-btn" class="drive-fab no-print" onclick="window._openDriveModal()" title="Google Drive">
+    <span class="drive-fab-inner">
+      <svg id="drive-fab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M6 20c0-3.314 2.686-6 6-6s6 2.686 6 6"/>
+      </svg>
+      <img id="drive-fab-photo" src="" alt="" style="display:none;">
+    </span>
+    <span id="drive-fab-check" class="drive-fab-check" style="display:none">✓</span>
+    <span id="drive-fab-badge" class="drive-fab-badge" style="display:none"></span>
+  </button>
 
   <!-- Drive Save Toast -->
   <div id="drive-toast" class="drive-toast no-print">
