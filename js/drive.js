@@ -468,10 +468,22 @@ async function _getEffectiveShareCode(studentName) {
 // Alunno condiviso (proprio già condiviso, o ricevuto): riscrive il campo
 // "student" su Firebase — chiunque altro veda questo shareCode lo scoprirà al
 // prossimo refresh (vedi _refreshCurrentStudentFromDrive in app.js).
-// Alunno proprio mai condiviso: rinomina semplicemente il file su Drive.
+// Alunno proprio (condiviso o no): rinomina SEMPRE anche il file su Drive, se esiste.
+// FIX (19/07/2026): prima, se l'alunno era condiviso, la funzione si fermava dopo
+// Firebase e usciva — il file Drive personale restava col nome vecchio per sempre
+// (bug reale: EMMA rinominata in EMMA ROSSINI mostrava "✅ rinominato" ma su Drive
+// restava "EMMA", e il refresh periodico riaggiungeva "EMMA" in lista → doppione).
+// Ora i due aggiornamenti (Firebase + Drive) sono indipendenti ed entrambi eseguiti
+// quando applicabili, così Drive resta sempre la copia coerente col nome corrente.
 export async function renameStudentOnDrive(oldName, newName, dict, custom, labels) {
   if (!isDriveConnected()) return;
-  const shareCode = await _getEffectiveShareCode(oldName);
+
+  const received = driveState.sharedShareCodes?.[oldName] || null;
+  let fileId = null, content = null;
+  if (driveState.folderId) {
+    try { ({ fileId, content } = await _findVerifiedOwnFile(oldName)); } catch(e) { /* nessun file proprio */ }
+  }
+  const shareCode = received || content?.shareCode || null;
 
   if (shareCode) {
     const token = await _fbAuthToken();
@@ -488,25 +500,24 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
       driveState.sharedShareCodes[newName] = shareCode;
       saveDriveState();
     }
-    return;
   }
 
-  // Alunno proprio, mai condiviso: rinomina il file su Drive
-  if (!driveState.folderId) return;
-  const { fileId } = await _findVerifiedOwnFile(oldName);
-  if (!fileId) return;
-  const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
-  await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
-  try {
-    const content = await loadFileContent(fileId);
-    content.student = newName;
-    await updateDriveFile(fileId, JSON.stringify(content));
-  } catch(e) { /* non bloccante */ }
+  // Alunno proprio (file Drive personale trovato): rinomina anche lì, indipendentemente
+  // dal ramo Firebase sopra — un alunno condiviso ha comunque un file Drive personale.
+  if (fileId) {
+    const newFileName = `vocabolario-${sanitizeName(newName || '_anonimo')}.json`;
+    await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'PATCH', { name: newFileName });
+    try {
+      const freshContent = await loadFileContent(fileId);
+      freshContent.student = newName;
+      await updateDriveFile(fileId, JSON.stringify(freshContent));
+    } catch(e) { /* non bloccante */ }
 
-  if (driveState.ownFileIds?.[oldName]) {
-    delete driveState.ownFileIds[oldName];
-    driveState.ownFileIds[newName] = fileId;
-    saveDriveState();
+    if (driveState.ownFileIds?.[oldName]) {
+      delete driveState.ownFileIds[oldName];
+      driveState.ownFileIds[newName] = fileId;
+      saveDriveState();
+    }
   }
 }
 

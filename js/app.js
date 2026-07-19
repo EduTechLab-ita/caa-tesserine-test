@@ -1318,11 +1318,28 @@ function saveLabels(lbls) {
   saveLabelsForStudent(getCurrentStudent(), lbls);
 }
 
-// ── Sync lista alunni da Drive (aggiunge alunni trovati su Drive) ─
+// ── Sync lista alunni da Drive (riconcilia: aggiunge E rimuove) ─────
+// FIX (19/07/2026): prima era solo additiva (mai una rimozione) — un alunno rinominato
+// o mai davvero salvato restava per sempre nella lista locale di QUESTO browser, anche
+// se su Drive non esisteva più con quel nome. Bug reale osservato da Fabio: browser
+// diversi, stesso account Drive, mostravano liste alunni diverse (residui di test vari
+// mai ripuliti) — e dopo una rinomina il nome vecchio ricompariva al refresh successivo
+// perché il file Drive con quel nome esisteva ancora (vedi fix in renameStudentOnDrive).
+// Ora la lista locale è sempre riconciliata con la realtà di Drive/Firebase: si aggiunge
+// chi manca, si toglie chi non c'è più — tranne "" (anonimo, sempre valido) e l'alunno
+// attualmente selezionato (potrebbe essere appena creato, non ancora salvato la prima volta).
 async function syncStudentListFromDrive() {
   if (!isDriveConnected()) return;
   const driveStudents = await listStudentsOnDrive();
-  driveStudents.forEach(s => { if (s.name !== undefined) addStudent(s.name); });
+  const driveNames = new Set(driveStudents.map(s => s.name).filter(n => n !== undefined));
+  const current = getCurrentStudent();
+
+  driveNames.forEach(name => addStudent(name));
+
+  getStudentsList()
+    .filter(name => name !== '' && name !== current && !driveNames.has(name))
+    .forEach(name => removeStudent(name));
+
   updateStudentSelector();
 }
 
