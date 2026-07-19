@@ -47,6 +47,14 @@ import {
 // ── Stato globale ──────────────────────────────────────────────
 let dictionary     = loadDictionary();
 let _driveSaveTimer = null; // debounce per sync Drive
+// Sottoscrizione push attiva (vedi _resubscribeLive più sotto) — dichiarata qui
+// in cima, non vicino al suo primo uso: loadDriveConfig() poco sotto può chiamare
+// _resubscribeLive SINCRONAMENTE (token già in cache) durante il caricamento
+// iniziale del modulo, prima che l'esecuzione arrivi alla riga di dichiarazione
+// se questa restasse più in basso — un `let` non è accessibile prima della sua
+// riga (temporal dead zone), a differenza delle function declaration che sono
+// hoistate. Bug reale trovato da Fabio in test dal vivo (19/07/2026).
+let _liveUnsubscribe = null;
 /**
  * @type {Array<{
  *   word:string, id:number|null, imageUrl:string|null, dataURL:string|null,
@@ -192,7 +200,7 @@ document.addEventListener('visibilitychange', () => {
 // serve ascoltare tutti i vocabolari condivisi contemporaneamente, solo quello
 // che l'utente sta guardando in questo momento. getShareCodeForStudent ritorna
 // null per un alunno non condiviso: in quel caso non si apre nessuna connessione.
-let _liveUnsubscribe = null;
+// (_liveUnsubscribe dichiarata in cima al file, vedi nota lì)
 async function _resubscribeLive(name) {
   if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
   if (!name || !isDriveConnected()) return;
