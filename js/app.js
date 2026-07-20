@@ -194,13 +194,10 @@ async function _adoptRemoteRename(oldName, newName) {
 // portava la scheda in primo piano o si riselezionava manualmente dal menu.
 async function _refreshCurrentStudentFromDrive() {
   let name = getCurrentStudent();
-  console.log('[DIAG] _refreshCurrentStudentFromDrive chiamata, name=', name, 'isDriveConnected=', isDriveConnected());
   if (!name || !isDriveConnected()) return;
   const token = ++_selectorLoadToken;
-  console.log('[DIAG] token assegnato=', token, 'fetching...');
   const driveData = await loadStudentFromDrive(name);
-  console.log('[DIAG] fetch completato per token=', token, 'currentToken=', _selectorLoadToken, 'driveData null?', !driveData, 'CASA in dict?', driveData?.dict ? ('CASA' in driveData.dict) : 'N/A');
-  if (token !== _selectorLoadToken) { console.log('[DIAG] SCARTATO per race condition, token=', token, 'vs', _selectorLoadToken); return; }
+  if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
   if (!driveData) return;
 
   // Qualcun altro ha rinominato questo alunno (proprietario o collega) — adotta
@@ -215,7 +212,6 @@ async function _refreshCurrentStudentFromDrive() {
 
   const newDict = driveData.dict || {};
   const dictChanged = JSON.stringify(newDict) !== JSON.stringify(dictionary);
-  console.log('[DIAG] dictChanged=', dictChanged, 'wasRenamed=', wasRenamed, 'newDict keys=', Object.keys(newDict).length, 'oldDict keys=', Object.keys(dictionary).length);
   // FIX (19/07/2026, bug trovato da Fabio): prima si usciva qui se il dizionario
   // non era cambiato — ma una rinomina PURA (nessuna parola aggiunta/tolta, solo
   // il nome) non cambia mai il dizionario, quindi la campanella non scattava mai

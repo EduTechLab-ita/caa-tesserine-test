@@ -71,7 +71,24 @@ export function loadDriveConfig(onConnected) {
   updateDriveButton();
 
   if (driveState.enabled && driveState.accessToken && Date.now() < driveState.tokenExpiry - 30000) {
-    onConnected && onConnected();
+    // FIX (20/07/2026 — BUG RADICE trovato con Opus dopo 3 giorni): questo ramo
+    // "token ancora valido" chiamava onConnected() DIRETTAMENTE, saltando
+    // restoreSharedIndex(). Conseguenza: dopo un reload con token ancora fresco
+    // (< ~1h), l'account che aveva RICEVUTO una condivisione non ripristinava
+    // sharedShareCodes dall'indice su Drive → _getEffectiveShareCode ritornava
+    // null → l'alunno condiviso veniva trattato come alunno PROPRIO → le modifiche
+    // finivano in un file Drive personale scollegato invece che su Firebase, e le
+    // due copie (proprietario via Firebase, destinatario via file personale) non
+    // si sincronizzavano mai. Bug intermittente perché dipendeva dalla validità
+    // del token OAuth: reload entro l'ora = si scollega, dopo l'ora (silent auth) =
+    // funzionava. restoreSharedIndex() era infatti già chiamato nel ramo
+    // trySilentAuth e in initDriveConnection, ma non qui. Ora allineato.
+    const proceed = () => { onConnected && onConnected(); };
+    if (driveState.folderId) {
+      restoreSharedIndex().then(proceed).catch(proceed);
+    } else {
+      proceed();
+    }
   } else if (driveState.enabled) {
     trySilentAuth(onConnected);
   }
