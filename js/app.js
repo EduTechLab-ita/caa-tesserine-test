@@ -55,6 +55,16 @@ let _driveSaveTimer = null; // debounce per sync Drive
 // riga (temporal dead zone), a differenza delle function declaration che sono
 // hoistate. Bug reale trovato da Fabio in test dal vivo (19/07/2026).
 let _liveUnsubscribe = null;
+// Incrementato ad ogni cambio alunno: se l'utente cambia di nuovo selezione mentre
+// un caricamento Drive precedente è ancora in corso, la risposta "vecchia" arriva
+// comunque ma va scartata — altrimenti può sovrascrivere il dizionario dell'alunno
+// SBAGLIATO (quello nel frattempo selezionato), contaminandolo. Causa reale di un
+// caso di dati mescolati tra due alunni segnalato da Fabio il 18/07/2026.
+// Stessa ragione di _liveUnsubscribe sopra per la posizione in cima al file: da
+// quando _refreshCurrentStudentFromDrive viene chiamata anche sincronamente al
+// boot (20/07/2026), una dichiarazione più in basso causava un ReferenceError
+// da temporal dead zone ("Cannot access before initialization") a ogni avvio.
+let _selectorLoadToken = 0;
 /**
  * @type {Array<{
  *   word:string, id:number|null, imageUrl:string|null, dataURL:string|null,
@@ -1223,14 +1233,6 @@ function drawNoImage(doc, x, y, cell, imgSize, imgX) {
 
 // ══════════════════════════════════════════════════════════════════
 //  SELETTORE ALUNNO
-// ══════════════════════════════════════════════════════════════════
-// Incrementato ad ogni cambio alunno: se l'utente cambia di nuovo selezione mentre
-// un caricamento Drive precedente è ancora in corso, la risposta "vecchia" arriva
-// comunque ma va scartata — altrimenti può sovrascrivere il dizionario dell'alunno
-// SBAGLIATO (quello nel frattempo selezionato), contaminandolo. Causa reale di un
-// caso di dati mescolati tra due alunni segnalato da Fabio il 18/07/2026.
-let _selectorLoadToken = 0;
-
 // Nasconde/azzera l'anteprima tessere (griglia + stato "Vocabolario completo") —
 // usata quando cambia l'alunno selezionato. FIX (19/07/2026, segnalato da Fabio):
 // prima la preview restava esposta con le tessere del vecchio alunno anche dopo
