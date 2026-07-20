@@ -3,7 +3,7 @@
 //  ⚙️  Aggiorna CACHE_NAME ad ogni deploy per forzare il refresh
 // ══════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'caartella-v5.23';
+const CACHE_NAME = 'caartella-v5.24';
 
 const STATIC_ASSETS = [
   './',

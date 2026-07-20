@@ -115,16 +115,26 @@ $('info-overlay').addEventListener('click', e => { if (e.target === $('info-over
 initStudentSelector();
 
 // ── Inizializza Drive ───────────────────────────────────────────
+// FIX (20/07/2026, bug reale trovato in test dal vivo): prima si contava solo
+// sulla sottoscrizione push per scoprire novità — se l'alunno corrente era già
+// selezionato da una sessione precedente, il suo vocabolario restava quello
+// della cache locale finché non si cambiava esplicitamente alunno dal menu,
+// anche dopo un reload completo della pagina. Ora si fa sempre anche un fetch
+// immediato "one-shot" (_refreshCurrentStudentFromDrive) appena Drive è pronto,
+// così l'alunno già in vista si allinea subito all'ultima versione remota
+// invece di aspettare passivamente il prossimo evento push.
 loadDriveConfig(() => {
   // Drive connesso al caricamento pagina (token già valido o silent auth)
   syncStudentListFromDrive();
   _resubscribeLive(getCurrentStudent());
+  _refreshCurrentStudentFromDrive();
 });
 
 // Drive connesso dopo login manuale (click sul pulsante) — es. Chromebook pulito
 document.addEventListener('caa-drive-connected', () => {
   syncStudentListFromDrive();
   _resubscribeLive(getCurrentStudent());
+  _refreshCurrentStudentFromDrive();
 });
 
 // ── Aggiornamento in tempo reale per vocabolari condivisi ──────────
@@ -1244,8 +1254,13 @@ function initStudentSelector() {
     // poter far "resuscitare" una tessera cancellata altrove nel frattempo.
     if (isDriveConnected()) {
       const driveData = await loadStudentFromDrive(name);
-      if (token !== _selectorLoadToken) return; // l'utente ha cambiato alunno nel frattempo
-      if (driveData) {
+      // Il token protegge SOLO l'applicazione dei dati Drive (una risposta
+      // arrivata in ritardo per un alunno non più selezionato non deve sovrascrivere
+      // quello attuale) — ma l'aggiornamento dei bottoni e il reset della preview
+      // qui sotto devono avvenire comunque, altrimenti l'UI resta bloccata sullo
+      // stato dell'alunno precedente finché non si ricarica la pagina (bug reale
+      // segnalato da Fabio 20/07/2026: bottoni non ricompaiono riselezionando un alunno).
+      if (token === _selectorLoadToken && driveData) {
         dictionary   = driveData.dict   || {};
         customImages = driveData.custom || {};
         customLabels = driveData.labels || {};
