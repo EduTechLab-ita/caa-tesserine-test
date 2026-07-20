@@ -200,7 +200,7 @@ select {
   pointer-events: none;
   transition: transform 0.25s ease, opacity 0.25s ease;
 }
-.status-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.status-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .status-banner.success { background: #16a34a; }
 .status-banner.error   { background: #dc2626; }
 
@@ -468,15 +468,94 @@ footer a:hover { text-decoration: underline; }
 }
 .btn-updates-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  box-sizing: border-box;
+  border-radius: 8px;
   background: #ef4444;
   border: 2px solid #6d28d9;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
   animation: drive-pulse-red 1.6s ease-in-out infinite;
 }
+
+/* ── Pannello elenco notifiche (aperto dalla campanella) ─────────── */
+.updates-panel {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 900;
+  width: min(90vw, 340px);
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.28);
+  overflow: hidden;
+  animation: drive-fade-in 0.18s ease;
+}
+.updates-panel.hidden { display: none; }
+.updates-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.9rem;
+  font-weight: 700;
+  color: #4c1d95;
+  background: #f5f3ff;
+  border-bottom: 1px solid #ede9fe;
+}
+.updates-clear {
+  border: none;
+  background: transparent;
+  color: #7c3aed;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.updates-clear:hover { background: #ede9fe; }
+.updates-list { overflow-y: auto; }
+.updates-item {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.85rem;
+  color: #334155;
+  align-items: flex-start;
+}
+.updates-item.unread { background: #eff6ff; }
+.updates-item .dot {
+  flex: 0 0 auto;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  margin-top: 5px;
+}
+.updates-item.unread .dot { background: #3b82f6; }
+.updates-item .txt { flex: 1; }
+.updates-item .time { display: block; font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+.updates-empty { padding: 1.4rem 0.9rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+
+@keyframes drive-fade-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* X per chiudere subito il banner di stato in sovraimpressione */
+.status-banner .banner-x {
+  margin-left: 0.7rem;
+  cursor: pointer;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.status-banner .banner-x:hover { opacity: 1; }
 
 /* ── PANNELLO INFO ─────────────────────────────────────────────── */
 .info-modal {

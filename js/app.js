@@ -65,6 +65,11 @@ let _liveUnsubscribe = null;
 // boot (20/07/2026), una dichiarazione più in basso causava un ReferenceError
 // da temporal dead zone ("Cannot access before initialization") a ogni avvio.
 let _selectorLoadToken = 0;
+// Elenco notifiche della SOLA sessione corrente (nessuna persistenza tra sessioni,
+// richiesta esplicita di Fabio 20/07/2026). Ogni voce: {text, time, read}. La
+// campanella mostra il numero di non lette; al clic si apre il pannello e si
+// marcano tutte come lette.
+let _notifications = [];
 /**
  * @type {Array<{
  *   word:string, id:number|null, imageUrl:string|null, dataURL:string|null,
@@ -227,27 +232,91 @@ async function _refreshCurrentStudentFromDrive() {
     saveLabelsForStudent(name, customLabels);
     if (tiles.length > 0) renderPages();
   }
-  showStatus(`🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`, 'success');
-  _showUpdateBadge(name);
+  const msg = `🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`;
+  showStatus(msg, 'success');
+  addNotification(msg);
 }
 
-// ── Campanella avvisi (19/07/2026) ──────────────────────────────────
-// FIX: il messaggio "🔄 Vocabolario aggiornato" sopra scrive dentro alla pagina
-// (#status) — se l'utente è scrollato in alto (es. sta guardando il selettore
-// alunno) non lo vede mai (segnalato da Fabio). La campanella nell'header resta
-// sempre in vista indipendentemente dallo scroll, col badge rosso finché non la
-// si clicca — stesso pattern del badge foto EduConnect→EduBoard.
-function _showUpdateBadge(name) {
-  const badge = document.getElementById('btn-updates-badge');
-  const btn   = document.getElementById('btn-updates');
-  if (badge) badge.style.display = 'block';
-  if (btn) btn.title = `Vocabolario di "${name}" aggiornato da una collega — clicca per confermare`;
+// ── Campanella avvisi + elenco notifiche di sessione (19/07 → 20/07/2026) ──
+// FIX (19/07): il messaggio "🔄 Vocabolario aggiornato" scriveva dentro alla pagina
+// (#status) — se l'utente era scrollato in alto non lo vedeva mai. La campanella
+// nell'header resta sempre in vista. AGGIUNTA (20/07, richiesta di Fabio): il clic
+// non si limita più a spegnere il pallino, ma apre un pannello con l'ELENCO delle
+// notifiche della sessione (cosa è successo: salvataggi, aggiornamenti da colleghe),
+// così restano consultabili anche dopo che il banner in sovraimpressione è sparito.
+// Il badge ora è un contatore delle non lette.
+function addNotification(text) {
+  _notifications.unshift({ text, time: new Date(), read: false });
+  if (_notifications.length > 50) _notifications.length = 50; // solo sessione, tetto di sicurezza
+  _refreshUpdatesBadge();
+  // se il pannello è aperto, riflette subito la nuova voce
+  const panel = document.getElementById('updates-panel');
+  if (panel && !panel.classList.contains('hidden')) _renderUpdatesPanel();
 }
-document.getElementById('btn-updates')?.addEventListener('click', () => {
+
+function _refreshUpdatesBadge() {
   const badge = document.getElementById('btn-updates-badge');
   const btn   = document.getElementById('btn-updates');
-  if (badge) badge.style.display = 'none';
-  if (btn) btn.title = 'Nessun avviso';
+  const unread = _notifications.filter(n => !n.read).length;
+  if (badge) {
+    badge.style.display = unread > 0 ? 'block' : 'none';
+    badge.textContent   = unread > 0 ? String(unread) : '';
+  }
+  if (btn) btn.title = unread > 0 ? `${unread} nuova/e notifica/e — clicca per leggere` : 'Notifiche';
+}
+
+function _fmtTime(d) {
+  try { return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); }
+  catch(e) { return ''; }
+}
+
+function _renderUpdatesPanel() {
+  const list = document.getElementById('updates-list');
+  if (!list) return;
+  if (_notifications.length === 0) {
+    list.innerHTML = '<div class="updates-empty">Nessuna notifica in questa sessione.</div>';
+    return;
+  }
+  list.innerHTML = _notifications.map(n =>
+    `<div class="updates-item ${n.read ? '' : 'unread'}">
+       <span class="dot"></span>
+       <span class="txt">${n.text.replace(/</g,'&lt;')}<span class="time">${_fmtTime(n.time)}</span></span>
+     </div>`
+  ).join('');
+}
+
+document.getElementById('btn-updates')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const panel = document.getElementById('updates-panel');
+  if (!panel) return;
+  const willOpen = panel.classList.contains('hidden');
+  if (willOpen) {
+    _renderUpdatesPanel();
+    panel.classList.remove('hidden');
+    // aprire = leggere: marca tutte come lette e spegni il badge
+    _notifications.forEach(n => n.read = true);
+    _refreshUpdatesBadge();
+  } else {
+    panel.classList.add('hidden');
+  }
+});
+
+// Svuota l'elenco notifiche della sessione
+document.getElementById('updates-clear')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  _notifications = [];
+  _refreshUpdatesBadge();
+  _renderUpdatesPanel();
+});
+
+// Chiudi il pannello notifiche cliccando fuori
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('updates-panel');
+  const btn   = document.getElementById('btn-updates');
+  if (!panel || panel.classList.contains('hidden')) return;
+  if (!panel.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+    panel.classList.add('hidden');
+  }
 });
 
 document.addEventListener('visibilitychange', () => {
@@ -1568,11 +1637,15 @@ function showStatus(msg, type = '') {
   statusDiv.className   = `status ${type}`;
   statusDiv.classList.remove('hidden');
 
-  // Echo in sovraimpressione sempre visibile, indipendente dallo scroll (vedi nota CSS)
+  // Echo in sovraimpressione sempre visibile, indipendente dallo scroll (vedi nota CSS).
+  // Aggiunta X (20/07/2026) per chiuderlo subito: sparisce comunque da solo dopo 4.5s,
+  // ma la notifica resta poi consultabile nell'elenco della campanella.
   if (statusBanner) {
     clearTimeout(_statusBannerTimer);
-    statusBanner.textContent = msg;
-    statusBanner.className   = `status-banner show ${type}`;
+    statusBanner.innerHTML = `<span>${msg.replace(/</g,'&lt;')}</span><span class="banner-x" role="button" aria-label="Chiudi">✕</span>`;
+    statusBanner.className  = `status-banner show ${type}`;
+    const x = statusBanner.querySelector('.banner-x');
+    if (x) x.addEventListener('click', () => statusBanner.classList.remove('show'));
     _statusBannerTimer = setTimeout(() => statusBanner.classList.remove('show'), 4500);
   }
 }
