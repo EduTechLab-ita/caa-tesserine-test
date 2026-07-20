@@ -174,9 +174,17 @@ async function _adoptRemoteRename(oldName, newName) {
   syncOwnFileNameToDrive(oldName, newName); // no-op se questa sessione non è la proprietaria
 }
 
+// FIX (20/07/2026): il controllo document.hidden aveva senso quando questa
+// funzione veniva chiamata SOLO da visibilitychange (già garantiva hidden=false)
+// e dal listener push (dove aveva lo scopo di rimandare il refresh a quando la
+// scheda torna visibile). Da quando viene chiamata anche una volta sola al boot/
+// riconnessione Drive (vedi loadDriveConfig in fondo al file), bloccare qui il
+// refresh se la scheda è in background impediva proprio il caso che doveva
+// risolvere: l'alunno già selezionato restava con la cache vecchia finché non si
+// portava la scheda in primo piano o si riselezionava manualmente dal menu.
 async function _refreshCurrentStudentFromDrive() {
   let name = getCurrentStudent();
-  if (!name || !isDriveConnected() || document.hidden) return;
+  if (!name || !isDriveConnected()) return;
   const token = ++_selectorLoadToken;
   const driveData = await loadStudentFromDrive(name);
   if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
