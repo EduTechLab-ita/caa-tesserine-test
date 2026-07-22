@@ -605,7 +605,6 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
     const payload = JSON.stringify({
       dict: dict || {}, custom: custom || {}, labels: labels || {},
       student: newName, updatedAt: new Date().toISOString(),
-      updatedBy: driveState.userEmail || '', // per le notifiche descrittive lato collega
     });
     const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
@@ -758,7 +757,6 @@ export async function saveStudentToDrive(studentName, dict, custom, labels = {})
       const payload = JSON.stringify({
         dict: dict || {}, custom: custom || {}, labels: labels || {},
         student: studentName, updatedAt: new Date().toISOString(),
-        updatedBy: driveState.userEmail || '', // per le notifiche descrittive lato collega
       });
       const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
