@@ -29,7 +29,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.31</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.32</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -416,20 +416,25 @@
           <div id="drive-share-with-student" style="display:none;">
             <ol style="font-size:0.82rem;color:#475569;padding-left:18px;margin:6px 0 10px;">
               <li style="margin-bottom:6px;">
-                Clicca <b>"Copia messaggio"</b> qui sotto — il testo con le istruzioni e il link è già pronto
+                Clicca <b>"✉️ Invia via email"</b> qui sotto — si apre una mail già pronta con testo e link: aggiungi il/la collega come destinatario/a e invia
               </li>
-              <li style="margin-bottom:6px;">
-                Incolla il messaggio e invialo al/alla collega (email, chat, ecc.) — non serve condividere nulla manualmente su Drive
-              </li>
-              <li>Il/la collega riceve il messaggio con un link — cliccandolo si apre CAArtella con il codice già precompilato nel box blu: deve solo collegare il Drive e cliccare <b>Carica</b></li>
+              <li>Il/la collega riceve la mail con un link — cliccandolo si apre CAArtella con il codice già precompilato nel box blu: deve solo collegare il Drive e cliccare <b>Carica</b></li>
             </ol>
-            <p style="font-size:0.78rem;color:#64748b;margin-bottom:6px;">Codice (già incluso nel messaggio):</p>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <input id="drive-share-code" type="text" readonly
-                     style="flex:1;min-width:120px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;background:#f1f5f9;color:#334155;font-family:monospace;">
-              <button type="button" class="btn primary small" onclick="window._copyShareCode()">📋 Copia messaggio</button>
-              <button type="button" id="btn-email-share" class="btn secondary small" onclick="window._emailShareCode()">✉️ Invia via email</button>
+              <button type="button" id="btn-email-share" class="btn primary small" onclick="window._emailShareCode()">✉️ Invia via email</button>
             </div>
+            <!-- Fallback manuale: solo se la mail automatica non si apre / si preferisce un altro canale -->
+            <details style="margin-top:10px;">
+              <summary style="font-size:0.8rem;color:#64748b;cursor:pointer;">La mail non si apre? Invia il messaggio a mano</summary>
+              <p style="font-size:0.8rem;color:#475569;margin:8px 0 6px;">
+                Clicca <b>"Copia messaggio"</b> e incollalo dove preferisci (un'altra mail, WhatsApp, chat…). Contiene già le istruzioni e il link con il codice.
+              </p>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <input id="drive-share-code" type="text" readonly
+                       style="flex:1;min-width:120px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font-size:0.8rem;background:#f1f5f9;color:#334155;font-family:monospace;">
+                <button type="button" class="btn secondary small" onclick="window._copyShareCode()">📋 Copia messaggio</button>
+              </div>
+            </details>
           </div>
           <!-- Vocabolari condivisi ricevuti -->
           <div id="drive-shared-students" style="margin-top:12px;display:none;">
