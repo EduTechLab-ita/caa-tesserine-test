@@ -18,7 +18,7 @@ import {
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
   isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
-  getShareCodeForStudent, subscribeSharedStudent,
+  getShareCodeForStudent, subscribeSharedStudent, SHARED_STUDENT_DELETED,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -203,6 +203,23 @@ async function _refreshCurrentStudentFromDrive() {
   const token = ++_selectorLoadToken;
   const driveData = await loadStudentFromDrive(name);
   if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
+
+  if (driveData === SHARED_STUDENT_DELETED) {
+    // Il proprietario ha eliminato definitivamente questo vocabolario condiviso —
+    // rimuove l'alunno fantasma anche da qui, stessa pulizia del pulsante ✕.
+    if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
+    removeStudent(name);
+    deleteStudentData(name);
+    updateStudentSelector('');
+    setCurrentStudent('');
+    dictionary   = loadDictionary();
+    customImages = loadCustomImagesForStudent('');
+    clearPreview();
+    const delMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
+    showStatus(delMsg, 'error');
+    addNotification(delMsg);
+    return;
+  }
   if (!driveData) return;
 
   // Qualcun altro ha rinominato questo alunno (proprietario o collega) — adotta
@@ -1133,6 +1150,7 @@ async function handleImportDict(e) {
     saveDictionary(dictionary);
     saveCustomImages(customImages);
     saveLabels(customLabels);
+    scheduleDriveSync(); // altrimenti l'import resta solo locale finché non arriva un'altra modifica
     const nd = Object.keys(dict).length;
     const ni = Object.keys(imgs).length;
     const msg = ni > 0

@@ -29,7 +29,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.29</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.30</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -238,6 +238,10 @@
         <button id="btn-add-student" class="btn secondary small" title="Aggiungi alunno">+ Nuovo</button>
         <button id="btn-rename-student" class="btn secondary small" title="Modifica nome alunno" style="display:none">✏️</button>
         <button id="btn-remove-student" class="btn secondary small danger" title="Rimuovi alunno selezionato" style="display:none">✕</button>
+        <label class="btn secondary small" style="cursor:pointer;" title="Importa un dizionario JSON (es. un backup scaricato da Drive) per l'alunno selezionato">
+          ⬆ Importa dizionario
+          <input type="file" id="file-import-dict" accept=".json" hidden />
+        </label>
       </div>
       <p class="student-hint">Il dizionario è separato per ogni alunno. Senza nome usa un dizionario condiviso.</p>
     </section>
@@ -332,10 +336,6 @@
         </h2>
         <div class="toolbar-actions">
           <button id="btn-export-dict" class="btn secondary small">⬇ Esporta dizionario</button>
-          <label class="btn secondary small" style="cursor:pointer;">
-            ⬆ Importa dizionario
-            <input type="file" id="file-import-dict" accept=".json" hidden />
-          </label>
           <button id="btn-pdf" class="btn primary">🖨️ Scarica PDF</button>
         </div>
       </div>

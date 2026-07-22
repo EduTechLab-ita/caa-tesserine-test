@@ -18,6 +18,13 @@ const FIREBASE_API_KEY  = 'AIzaSyAQqLPBBFXUKACLrChHrJljQfnlWA_tGg8';
 // "drive" completo deve ridare il consenso per passare a "drive.file".
 const SCOPE_VERSION = 2;
 
+// Sentinel ritornato da loadStudentFromDrive quando il nodo Firebase condiviso
+// non esiste più (il proprietario ha eliminato definitivamente il vocabolario) —
+// distinto da `null` (errore di rete/auth), così il chiamante (app.js) può
+// rimuovere l'alunno fantasma dal proprio elenco invece di ignorare in silenzio
+// l'assenza di dati. Vedi _refreshCurrentStudentFromDrive in app.js.
+export const SHARED_STUDENT_DELETED = '__SHARED_STUDENT_DELETED__';
+
 // ── Stato Drive (persiste in localStorage) ────────────────────────
 let driveState = {
   enabled:          false,
@@ -275,6 +282,26 @@ async function restoreSharedIndex() {
     if (name && code) driveState.sharedShareCodes[name] = code;
   });
   saveDriveState();
+}
+
+// ── Dimentica un vocabolario condiviso il cui nodo Firebase non esiste più ──
+// Chiamata quando loadStudentFromDrive scopre che il proprietario ha eliminato
+// definitivamente il vocabolario (GET Firebase riuscito ma corpo null). Pulisce
+// sia lo stato in memoria (sharedShareCodes) sia l'indice persistito su Drive
+// (indice-condivisi.json) di QUESTO account — altrimenti al prossimo reload
+// restoreSharedIndex() lo ripristinerebbe, e una modifica locale successiva
+// (saveStudentToDrive) ricreerebbe silenziosamente il nodo Firebase già
+// eliminato dal proprietario (PUT su un path Firebase inesistente lo crea).
+async function _forgetSharedStudent(studentName, code) {
+  if (driveState.sharedShareCodes?.[studentName] === code) {
+    delete driveState.sharedShareCodes[studentName];
+    saveDriveState();
+  }
+  try {
+    const entries = await loadSharedIndex();
+    const filtered = entries.filter(e => e.code !== code);
+    if (filtered.length !== entries.length) await saveSharedIndex(filtered);
+  } catch(e) { /* non bloccante: il prossimo tentativo di refresh riproverà */ }
 }
 
 // ── Trova o crea la cartella CAArtella/ ──────────────────────────
@@ -665,6 +692,10 @@ export async function deleteStudentFromDrive(studentName) {
       const token = await _fbAuthToken();
       await fetch(`${FIREBASE_DB_URL}/caartella-shared/${content.shareCode}.json?auth=${token}`, { method: 'DELETE' });
     } catch(e) { /* non bloccante: procede comunque con l'eliminazione del file Drive */ }
+    // Rimuove anche l'eventuale voce residua nel proprio indice-condivisi.json
+    // (aggiunta da una rinomina passata, vedi renameStudentOnDrive) — altrimenti
+    // resterebbe un riferimento a uno shareCode ormai morto in questo indice.
+    await _forgetSharedStudent(studentName, content.shareCode);
   }
 
   await driveApiFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, 'DELETE');
@@ -757,9 +788,15 @@ export async function loadStudentFromDrive(studentName) {
     if (shareCode) {
       const token = await _fbAuthToken();
       const resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
-      if (!resp.ok) return null;
+      if (!resp.ok) return null; // errore di rete/auth — non è una eliminazione confermata
       const data = await resp.json();
-      return data || null;
+      if (data === null) {
+        // GET riuscito ma corpo vuoto: il nodo Firebase non esiste (più) —
+        // il proprietario ha eliminato definitivamente il vocabolario condiviso.
+        await _forgetSharedStudent(studentName, shareCode);
+        return SHARED_STUDENT_DELETED;
+      }
+      return data;
     }
 
     // Altrimenti cerca nel folder personale (con autoverifica della cache)
