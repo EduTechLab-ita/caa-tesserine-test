@@ -18,13 +18,6 @@ const FIREBASE_API_KEY  = 'AIzaSyAQqLPBBFXUKACLrChHrJljQfnlWA_tGg8';
 // "drive" completo deve ridare il consenso per passare a "drive.file".
 const SCOPE_VERSION = 2;
 
-// Sentinel ritornato da loadStudentFromDrive quando il nodo Firebase condiviso
-// non esiste più (il proprietario ha eliminato definitivamente il vocabolario) —
-// distinto da `null` (errore di rete/auth), così il chiamante (app.js) può
-// rimuovere l'alunno fantasma dal proprio elenco invece di ignorare in silenzio
-// l'assenza di dati. Vedi _refreshCurrentStudentFromDrive in app.js.
-export const SHARED_STUDENT_DELETED = '__SHARED_STUDENT_DELETED__';
-
 // ── Stato Drive (persiste in localStorage) ────────────────────────
 let driveState = {
   enabled:          false,
@@ -285,13 +278,14 @@ async function restoreSharedIndex() {
 }
 
 // ── Dimentica un vocabolario condiviso il cui nodo Firebase non esiste più ──
-// Chiamata quando loadStudentFromDrive scopre che il proprietario ha eliminato
-// definitivamente il vocabolario (GET Firebase riuscito ma corpo null). Pulisce
-// sia lo stato in memoria (sharedShareCodes) sia l'indice persistito su Drive
-// (indice-condivisi.json) di QUESTO account — altrimenti al prossimo reload
+// Chiamata quando il proprietario ha eliminato definitivamente il vocabolario —
+// dal lato collega tramite l'evento push (subscribeSharedStudent → onDelete →
+// forgetSharedStudent) e dal lato proprietario stesso in deleteStudentFromDrive.
+// Pulisce sia lo stato in memoria (sharedShareCodes) sia l'indice persistito su
+// Drive (indice-condivisi.json) di QUESTO account — altrimenti al prossimo reload
 // restoreSharedIndex() lo ripristinerebbe, e una modifica locale successiva
-// (saveStudentToDrive) ricreerebbe silenziosamente il nodo Firebase già
-// eliminato dal proprietario (PUT su un path Firebase inesistente lo crea).
+// (saveStudentToDrive) ricreerebbe silenziosamente il nodo Firebase già eliminato
+// dal proprietario (PUT su un path Firebase inesistente lo crea).
 async function _forgetSharedStudent(studentName, code) {
   if (driveState.sharedShareCodes?.[studentName] === code) {
     delete driveState.sharedShareCodes[studentName];
@@ -302,6 +296,14 @@ async function _forgetSharedStudent(studentName, code) {
     const filtered = entries.filter(e => e.code !== code);
     if (filtered.length !== entries.length) await saveSharedIndex(filtered);
   } catch(e) { /* non bloccante: il prossimo tentativo di refresh riproverà */ }
+}
+
+// Versione pubblica: app.js la chiama dalla callback onDelete della sottoscrizione
+// push quando scopre che un vocabolario condiviso è stato eliminato dal proprietario.
+// Ricava lo shareCode dallo stato in memoria (l'alunno è per forza fra i condivisi).
+export async function forgetSharedStudent(studentName) {
+  const code = driveState.sharedShareCodes?.[studentName];
+  if (code) await _forgetSharedStudent(studentName, code);
 }
 
 // ── Trova o crea la cartella CAArtella/ ──────────────────────────
@@ -525,7 +527,7 @@ export async function getShareCodeForStudent(studentName) {
 // interpretare il payload `put`/`patch` dell'evento stesso — più semplice e
 // robusto, non serve reimplementare la logica di merge-patch di Firebase lato
 // client. Ritorna una funzione di annullamento sottoscrizione.
-export function subscribeSharedStudent(shareCode, onChange) {
+export function subscribeSharedStudent(shareCode, onChange, onDelete) {
   let es = null;
   let closed = false;
   let retryTimer = null;
@@ -536,9 +538,24 @@ export function subscribeSharedStudent(shareCode, onChange) {
     try { token = await _fbAuthToken(); } catch(e) { retry(); return; }
     if (closed) return;
     es = new EventSource(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
-    const trigger = () => { if (!closed) onChange(); };
-    es.addEventListener('put', trigger);
-    es.addEventListener('patch', trigger);
+    // Un evento SSE arriva SOLO quando il nodo cambia davvero (notifica push reale),
+    // quindi qui un `data:null` sulla radice è una cancellazione GENUINA — non è
+    // ambiguo come un GET separato (vedi nota in loadStudentFromDrive). Firebase
+    // manda esattamente {"path":"/","data":null} quando il nodo viene eliminato
+    // con DELETE: in quel caso avvisa onDelete invece di onChange.
+    const onPut = (e) => {
+      if (closed) return;
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload && payload.path === '/' && payload.data === null) {
+          if (onDelete) onDelete();
+          return;
+        }
+      } catch(err) { /* payload non interpretabile: tratta come cambiamento generico */ }
+      onChange();
+    };
+    es.addEventListener('put', onPut);
+    es.addEventListener('patch', () => { if (!closed) onChange(); });
     es.onerror = () => {
       // Token scaduto o connessione caduta (es. rete assente per un attimo) —
       // richiude e riprova con un token fresco dopo una breve pausa fissa
@@ -588,6 +605,7 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
     const payload = JSON.stringify({
       dict: dict || {}, custom: custom || {}, labels: labels || {},
       student: newName, updatedAt: new Date().toISOString(),
+      updatedBy: driveState.userEmail || '', // per le notifiche descrittive lato collega
     });
     const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
@@ -712,6 +730,12 @@ export function getDriveFolderUrl() {
   return `https://drive.google.com/drive/folders/${driveState.folderId}`;
 }
 
+// Email dell'account Drive attualmente connesso ('' se non connesso) — usata da
+// app.js per non attribuire a una collega una modifica fatta da noi stessi.
+export function getDriveUserEmail() {
+  return driveState.userEmail || '';
+}
+
 // ── Salva dizionario alunno (Drive personale, o Firebase se condiviso) ──
 // NOTA (18/07/2026): niente più merge additivo con la versione remota. Un merge
 // {...remoto, ...locale} può solo AGGIUNGERE/sovrascrivere chiavi, mai rimuoverle —
@@ -734,6 +758,7 @@ export async function saveStudentToDrive(studentName, dict, custom, labels = {})
       const payload = JSON.stringify({
         dict: dict || {}, custom: custom || {}, labels: labels || {},
         student: studentName, updatedAt: new Date().toISOString(),
+        updatedBy: driveState.userEmail || '', // per le notifiche descrittive lato collega
       });
       const putResp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
@@ -788,15 +813,18 @@ export async function loadStudentFromDrive(studentName) {
     if (shareCode) {
       const token = await _fbAuthToken();
       const resp = await fetch(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
-      if (!resp.ok) return null; // errore di rete/auth — non è una eliminazione confermata
+      if (!resp.ok) return null;
       const data = await resp.json();
-      if (data === null) {
-        // GET riuscito ma corpo vuoto: il nodo Firebase non esiste (più) —
-        // il proprietario ha eliminato definitivamente il vocabolario condiviso.
-        await _forgetSharedStudent(studentName, shareCode);
-        return SHARED_STUDENT_DELETED;
-      }
-      return data;
+      // IMPORTANTE (22/07/2026): un corpo `null` NON è interpretato come
+      // "vocabolario eliminato" — Firebase RTDB risponde 200 + null anche quando
+      // le regole di sicurezza negano la lettura (es. token anonimo scaduto o in
+      // rinnovo), caso indistinguibile da una GET. Trattarlo come cancellazione
+      // qui rompeva la sincronizzazione a ogni intoppo temporaneo del token
+      // (regressione trovata da Fabio 22/07). La cancellazione VERA viene rilevata
+      // solo dall'evento push (subscribeSharedStudent → onDelete), che riflette una
+      // scrittura reale sul nodo e non è ambiguo. Qui, come prima, un null si
+      // ignora in silenzio e si riprova al giro successivo.
+      return data || null;
     }
 
     // Altrimenti cerca nel folder personale (con autoverifica della cache)

@@ -18,7 +18,8 @@ import {
   openDriveModal, closeDriveModal, showDrivePanel, updateDriveButton, showDriveToast,
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
   isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
-  getShareCodeForStudent, subscribeSharedStudent, SHARED_STUDENT_DELETED,
+  getShareCodeForStudent, subscribeSharedStudent, forgetSharedStudent,
+  getDriveUserEmail,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -203,28 +204,20 @@ async function _refreshCurrentStudentFromDrive() {
   const token = ++_selectorLoadToken;
   const driveData = await loadStudentFromDrive(name);
   if (token !== _selectorLoadToken) return; // alunno cambiato nel frattempo
-
-  if (driveData === SHARED_STUDENT_DELETED) {
-    // Il proprietario ha eliminato definitivamente questo vocabolario condiviso —
-    // rimuove l'alunno fantasma anche da qui, stessa pulizia del pulsante ✕.
-    if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
-    removeStudent(name);
-    deleteStudentData(name);
-    updateStudentSelector('');
-    setCurrentStudent('');
-    dictionary   = loadDictionary();
-    customImages = loadCustomImagesForStudent('');
-    clearPreview();
-    const delMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
-    showStatus(delMsg, 'error');
-    addNotification(delMsg);
-    return;
-  }
+  // null = nessuna novità, oppure intoppo temporaneo del token (vedi la nota in
+  // loadStudentFromDrive: un GET vuoto NON è una cancellazione). La cancellazione
+  // vera arriva solo dall'evento push, gestita da _handleSharedDeleted. Qui, come
+  // prima del 22/07, un null si ignora in silenzio e si riprova al giro dopo.
   if (!driveData) return;
+
+  // Chi ha fatto la modifica (email), solo se diverso da noi — per la notifica.
+  const editor = (driveData.updatedBy && driveData.updatedBy !== getDriveUserEmail())
+    ? driveData.updatedBy : '';
 
   // Qualcun altro ha rinominato questo alunno (proprietario o collega) — adotta
   // il nuovo nome in locale così la modifica si propaga anche senza intervento.
   const remoteName = driveData.student;
+  const prevName = name;
   let wasRenamed = false;
   if (remoteName && remoteName !== name && !getStudentsList().includes(remoteName)) {
     _adoptRemoteRename(name, remoteName);
@@ -240,7 +233,16 @@ async function _refreshCurrentStudentFromDrive() {
   // per una semplice rinomina, anche se _adoptRemoteRename sopra aveva già
   // funzionato. Ora l'uscita anticipata vale solo se non è cambiato NULLA.
   if (!dictChanged && !wasRenamed) return;
+
+  // Calcola parole aggiunte/rimosse PRIMA di sovrascrivere `dictionary` (24/07 →
+  // richiesta di Fabio: notifiche descrittive, non un generico "aggiornato").
+  const added = [], removed = [];
   if (dictChanged) {
+    const oldSet = new Set(Object.keys(dictionary));
+    const newSet = new Set(Object.keys(newDict));
+    for (const k of newSet) if (!oldSet.has(k)) added.push(k);
+    for (const k of oldSet) if (!newSet.has(k)) removed.push(k);
+
     dictionary   = newDict;
     customImages = driveData.custom || {};
     customLabels = driveData.labels || {};
@@ -249,9 +251,46 @@ async function _refreshCurrentStudentFromDrive() {
     saveLabelsForStudent(name, customLabels);
     if (tiles.length > 0) renderPages();
   }
-  const msg = `🔄 Vocabolario di "${name}" aggiornato (novità da una collega)`;
+
+  // ── Notifica descrittiva: cosa è cambiato, e da chi ──
+  const changes = [];
+  if (wasRenamed)     changes.push(`rinominato "${prevName}" → "${name}"`);
+  if (added.length)   changes.push(`➕ ${_fmtWordList(added)}`);
+  if (removed.length) changes.push(`➖ ${_fmtWordList(removed)}`);
+  const detail = changes.length ? changes.join(' · ') : 'aggiornato';
+  const who = editor ? ` — da ${editor}` : '';
+  const msg = `🔄 "${name}": ${detail}${who}`;
   showStatus(msg, 'success');
   addNotification(msg);
+}
+
+// Elenca fino a `max` parole, poi riassume il resto ("+N altre") — evita notifiche
+// chilometriche su un import massiccio o una prima condivisione da 100 parole.
+function _fmtWordList(words, max = 6) {
+  const clean = words.map(w => w.toLowerCase());
+  if (clean.length <= max) return clean.join(', ');
+  return clean.slice(0, max).join(', ') + ` +${clean.length - max} altre`;
+}
+
+// ── Vocabolario condiviso eliminato dal proprietario (rilevato via push) ──────
+// Chiamata dalla callback onDelete della sottoscrizione Firebase (evento push con
+// nodo → null): a differenza di un GET vuoto, è un segnale genuino di cancellazione.
+// Rimuove l'alunno fantasma e ripulisce lo stato condiviso (memoria + indice Drive).
+async function _handleSharedDeleted(name) {
+  await forgetSharedStudent(name);
+  if (getCurrentStudent() !== name) return; // non è quello in vista: basta dimenticarlo
+  if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
+  removeStudent(name);
+  deleteStudentData(name);
+  localStorage.removeItem(`caa_custom_v2_${name}`);
+  updateStudentSelector('');
+  setCurrentStudent('');
+  dictionary   = loadDictionary();
+  customImages = loadCustomImagesForStudent('');
+  clearPreview();
+  const delMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
+  showStatus(delMsg, 'error');
+  addNotification(delMsg);
 }
 
 // ── Campanella avvisi + elenco notifiche di sessione (19/07 → 20/07/2026) ──
@@ -351,7 +390,11 @@ async function _resubscribeLive(name) {
   if (!name || !isDriveConnected()) return;
   const shareCode = await getShareCodeForStudent(name);
   if (!shareCode) return;
-  _liveUnsubscribe = subscribeSharedStudent(shareCode, _refreshCurrentStudentFromDrive);
+  _liveUnsubscribe = subscribeSharedStudent(
+    shareCode,
+    _refreshCurrentStudentFromDrive,
+    () => _handleSharedDeleted(name),
+  );
 }
 
 // ── Link magico: ?condividi=CODICE ──────────────────────────────
@@ -1143,7 +1186,46 @@ async function handleImportDict(e) {
   if (!file) return;
 
   try {
-    const { dict, imgs, labels } = await importAll(file);
+    const { dict, imgs, labels, student } = await importAll(file);
+    const nd = Object.keys(dict).length;
+    const ni = Object.keys(imgs).length;
+
+    // FIX (22/07/2026): un backup scaricato da Drive porta con sé il nome dell'alunno
+    // (`student`). In quel caso RIPRISTINA su quell'alunno (creandolo se manca,
+    // sostituendo se esiste) invece di sommare ciecamente le parole all'alunno che
+    // capita essere selezionato — era proprio il caso EMMA finita mescolata con MARIO.
+    if (student) {
+      const exists = getStudentsList().includes(student);
+      const ok = confirm(
+        exists
+          ? `Questo è un backup del vocabolario di "${student}", che esiste già.\n\n` +
+            `Vuoi SOSTITUIRE il vocabolario di "${student}" con questo backup ` +
+            `(${nd} parole${ni ? ' + ' + ni + ' immagini' : ''})?\n\n` +
+            `Il contenuto attuale di "${student}" verrà rimpiazzato.`
+          : `Questo è un backup del vocabolario di "${student}".\n\n` +
+            `Vuoi importarlo creando l'alunno "${student}" ` +
+            `(${nd} parole${ni ? ' + ' + ni + ' immagini' : ''})?`
+      );
+      if (!ok) { e.target.value = ''; return; }
+
+      if (!exists) addStudent(student);
+      // Ripristino da backup = sostituzione completa (non merge), per quel singolo alunno.
+      saveDictionaryForStudent(student, dict);
+      saveCustomImagesForStudent(student, imgs);
+      saveLabelsForStudent(student, labels);
+      setCurrentStudent(student);
+      updateStudentSelector(student);
+      dictionary   = loadDictionaryForStudent(student);
+      customImages = loadCustomImagesForStudent(student);
+      customLabels = loadLabelsForStudent(student);
+      clearPreview();
+      scheduleDriveSync();
+      showStatus(`✅ Vocabolario di "${student}" ripristinato: ${nd} parole${ni ? ' + ' + ni + ' immagini' : ''}.`, 'success');
+      e.target.value = '';
+      return;
+    }
+
+    // Formato export generico (senza alunno): merge sull'alunno attualmente selezionato.
     dictionary   = { ...dictionary, ...dict };
     customImages = { ...customImages, ...imgs };
     customLabels = { ...customLabels, ...labels };
@@ -1151,8 +1233,6 @@ async function handleImportDict(e) {
     saveCustomImages(customImages);
     saveLabels(customLabels);
     scheduleDriveSync(); // altrimenti l'import resta solo locale finché non arriva un'altra modifica
-    const nd = Object.keys(dict).length;
-    const ni = Object.keys(imgs).length;
     const msg = ni > 0
       ? `✅ Importati: ${nd} pittogrammi + ${ni} immagini personalizzate.`
       : `✅ Dizionario importato: ${nd} parole.`;

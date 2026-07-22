@@ -93,10 +93,17 @@ export function exportAll(dict, imgs, labels = {}) {
 }
 
 /**
- * Importa da file JSON (supporta sia formato vecchio { PAROLA: id }
- * sia formato nuovo { arasaac: {...}, custom: {...} }).
+ * Importa da file JSON. Riconosce TRE formati:
+ *  - Export dell'app        → { arasaac:{PAROLA:id}, custom:{}, labels:{}, version }
+ *  - Backup scaricato da Drive → { dict:{PAROLA:id}, custom:{}, labels:{}, student, shareCode, savedAt }
+ *  - Legacy nudo            → { PAROLA:id, ... }  (solo dizionario, nessuna struttura)
+ * FIX (22/07/2026): prima il formato di backup Drive (chiave `dict`, non `arasaac`)
+ * cadeva nel ramo legacy e trattava le SUE chiavi di primo livello (dict, custom,
+ * student, savedAt, shareCode) come se fossero parole del vocabolario → importava
+ * 5-6 voci-spazzatura invece delle parole reali. Ora il ramo `dict` è gestito, e
+ * il campo `student` viene restituito così il chiamante sa a chi appartiene il backup.
  * @param {File} file
- * @returns {Promise<{ dict: Object, imgs: Object }>}
+ * @returns {Promise<{ dict: Object, imgs: Object, labels: Object, student: string|null }>}
  */
 export async function importAll(file) {
   return new Promise((resolve, reject) => {
@@ -104,12 +111,15 @@ export async function importAll(file) {
     reader.onload = e => {
       try {
         const data = JSON.parse(e.target.result);
-        if (data.arasaac) {
-          // Formato v1 (solo dict+imgs) o v2 (con labels)
-          resolve({ dict: data.arasaac || {}, imgs: data.custom || {}, labels: data.labels || {} });
+        if (data && typeof data.arasaac === 'object') {
+          // Export dell'app (v1 solo dict+imgs, v2 con labels)
+          resolve({ dict: data.arasaac || {}, imgs: data.custom || {}, labels: data.labels || {}, student: data.student || null });
+        } else if (data && typeof data.dict === 'object') {
+          // Backup scaricato da Drive
+          resolve({ dict: data.dict || {}, imgs: data.custom || {}, labels: data.labels || {}, student: data.student || null });
         } else {
-          // Formato legacy: solo dizionario ARASAAC senza struttura
-          resolve({ dict: data, imgs: {}, labels: {} });
+          // Legacy: l'intero oggetto è il dizionario ARASAAC
+          resolve({ dict: data || {}, imgs: {}, labels: {}, student: null });
         }
       } catch { reject(new Error('File JSON non valido')); }
     };
