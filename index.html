@@ -29,7 +29,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.33</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.34</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -141,6 +141,18 @@
           <li><b>+ Nuovo</b> — crea un alunno: il suo dizionario è separato dagli altri</li>
           <li>Cambiando alunno si carica automaticamente il suo vocabolario</li>
         </ul>
+        <p style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;">
+          <b>⚠️ Importante — protezione dei dati</b><br>
+          Quando crei un alunno <b>non scrivere il suo nome per esteso</b>: usa le
+          <b>iniziali</b> o uno <b>pseudonimo</b> (es. <i>"E.R."</i>, <i>"M.B."</i>, <i>"Sole"</i>).<br><br>
+          <b>Perché:</b> l'etichetta che scegli viene salvata nel tuo browser, nel file su
+          Google Drive e — se condividi il vocabolario con una collega — anche sul server di
+          sincronizzazione. Poiché un vocabolario CAA riguarda un alunno con bisogni
+          comunicativi specifici, associarvi il nome completo significherebbe trattare un
+          dato personale delicato di un minore. Con le sole iniziali il vocabolario resta
+          perfettamente riconoscibile per te e per le colleghe, ma non identifica l'alunno.<br><br>
+          Il nome per esteso, se ti serve, tienilo sui documenti scolastici — non qui.
+        </p>
       </div>
 
       <div class="info-section">
@@ -235,11 +247,12 @@
         <select id="sel-student">
           <option value="">— Nessun nome (uso generico) —</option>
         </select>
-        <button id="btn-add-student" class="btn secondary small" title="Aggiungi alunno">+ Nuovo</button>
-        <button id="btn-rename-student" class="btn secondary small" title="Modifica nome alunno" style="display:none">✏️</button>
+        <button id="btn-add-student" class="btn secondary small" title="Aggiungi alunno — usa iniziali o pseudonimo, mai il nome per esteso">+ Nuovo</button>
+        <button id="btn-rename-student" class="btn secondary small" title="Modifica etichetta alunno — usa iniziali o pseudonimo, mai il nome per esteso" style="display:none">✏️</button>
         <button id="btn-remove-student" class="btn secondary small danger" title="Rimuovi alunno selezionato" style="display:none">✕</button>
       </div>
       <p class="student-hint">Il dizionario è separato per ogni alunno. Senza nome usa un dizionario condiviso.</p>
+      <p class="student-hint" style="color:#b45309;"><b>⚠️ Privacy:</b> non inserire il nome per esteso dell'alunno — usa solo le <b>iniziali</b> o uno <b>pseudonimo</b> (es. "E.R.", "Sole").</p>
     </section>
 
     <!-- ── FORM ─────────────────────────────────────────────────────── -->

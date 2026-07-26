@@ -1454,7 +1454,18 @@ function initStudentSelector() {
   });
 
   $('btn-add-student').addEventListener('click', async () => {
-    const name = prompt('Nome dell\'alunno (es. "Mario R." oppure usa iniziali per la privacy):');
+    // PRIVACY (26/07/2026): l'etichetta scelta qui viaggia ovunque — file su Drive,
+    // nodo Firebase se il vocabolario viene condiviso, localStorage del browser (anche
+    // su un PC condiviso di scuola). Trattandosi di CAA, il solo fatto che esista un
+    // vocabolario per un alunno rivela una condizione di disabilità: il nome per esteso
+    // renderebbe quel dato identificativo. Chiedere iniziali/pseudonimo è la misura più
+    // efficace perché impedisce al dato di entrare nel sistema, invece di ripulirlo dopo.
+    const name = prompt(
+      '⚠️ PRIVACY — non scrivere il nome per esteso dell\'alunno.\n\n' +
+      'Per rispettare le norme sulla protezione dei dati, usa solo le\n' +
+      'INIZIALI o uno PSEUDONIMO — es. "E.R.", "M.B.", "Sole".\n\n' +
+      'Etichetta alunno:'
+    );
     if (!name || !name.trim()) return;
     const trimmed = name.trim();
     addStudent(trimmed);
@@ -1544,7 +1555,14 @@ function initStudentSelector() {
   $('btn-rename-student').addEventListener('click', async () => {
     const oldName = getCurrentStudent();
     if (!oldName) return;
-    const input = prompt(`Nuovo nome per "${oldName}":`, oldName);
+    // Stesso avviso privacy del pulsante "+ Nuovo" — la rinomina è l'altra porta
+    // d'ingresso da cui un nome per esteso può entrare nel sistema.
+    const input = prompt(
+      `Nuova etichetta per "${oldName}"\n\n` +
+      '⚠️ Solo INIZIALI o PSEUDONIMO (es. "E.R.", "Sole") —\n' +
+      'mai il nome per esteso dell\'alunno.',
+      oldName
+    );
     if (!input) return;
     const newName = input.trim();
     if (!newName || newName === oldName) return;
