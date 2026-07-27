@@ -19,7 +19,7 @@ import {
   makeShareReady, recordSharedCode, findStudentNameForCode, renameStudentOnDrive,
   isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
   getShareCodeForStudent, subscribeSharedStudent, forgetSharedStudent,
-  getDriveUserEmail,
+  getDriveUserEmail, remapSharedStudentName, canManageStudent,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -187,6 +187,16 @@ async function _adoptRemoteRename(oldName, newName) {
   renameStudentInList(oldName, newName);
   setCurrentStudent(newName);
   updateStudentSelector(newName);
+  // FIX (27/07/2026): senza questo, lo shareCode restava archiviato sotto il nome
+  // VECCHIO (in memoria e nell'indice su Drive) mentre l'alunno in elenco aveva già
+  // quello nuovo. Due conseguenze osservate nel test incrociato del 26/07: (1)
+  // getShareCodeForStudent(nuovoNome) tornava null → nessuna sottoscrizione push →
+  // questo lato non riceveva più NESSUN aggiornamento successivo; (2) al reload
+  // restoreSharedIndex() rileggeva l'indice mai aggiornato e reintroduceva il nome
+  // vecchio accanto al nuovo → due alunni in elenco con lo stesso vocabolario.
+  // La rinomina manuale faceva già questo lavoro (renameStudentOnDrive): ora la
+  // logica è una sola, condivisa. No-op se l'alunno non è un condiviso ricevuto.
+  await remapSharedStudentName(oldName, newName);
   syncOwnFileNameToDrive(oldName, newName); // no-op se questa sessione non è la proprietaria
 }
 
@@ -505,6 +515,7 @@ window._copyShareCode   = async () => {
   const code        = document.getElementById('drive-share-code')?.value;
   const studentName = getCurrentStudent();
   if (!code || code.startsWith('—') || code.startsWith('⏳')) return;
+  if (isSharedStudent(studentName)) return; // ri-condivisione riservata al proprietario (vedi _emailShareCode)
 
   const msg = _buildShareMessage(code, studentName);
 
@@ -549,6 +560,10 @@ window._emailShareCode = async () => {
   const code        = document.getElementById('drive-share-code')?.value;
   const studentName = getCurrentStudent();
   if (!code || code.startsWith('—') || code.startsWith('⏳')) return;
+  // Seconda barriera, sincrona (la prima è nel pannello, vedi _refreshDriveSharePanel):
+  // isSharedStudent legge la memoria, non la rete, quindi non rompe il vincolo
+  // "mailto: deve partire a ridosso del click".
+  if (isSharedStudent(studentName)) return;
 
   const msg     = _buildShareMessageShort(code, studentName);
   const subject = `Vocabolario CAA condiviso — ${studentName || 'alunno'} (CAArtella)`;
@@ -1555,6 +1570,30 @@ function initStudentSelector() {
   $('btn-rename-student').addEventListener('click', async () => {
     const oldName = getCurrentStudent();
     if (!oldName) return;
+
+    // ── Rinomina riservata al proprietario (regola decisa da Fabio 26/07/2026) ──
+    // Il campo "student" su Firebase deve avere UNA sola sorgente di scrittura: se
+    // anche chi riceve può rinominare, i due lati si sovrascrivono a vicenda ed è da
+    // lì che nascevano i doppioni e le rinomine che tornavano indietro. Chi riceve
+    // continua a usare e modificare il vocabolario normalmente: solo l'etichetta è
+    // decisa da chi l'ha creato. `null` = non è stato possibile stabilirlo (Drive
+    // irraggiungibile): si VIETA lo stesso, meglio rimandare che lasciare due file
+    // incoerenti da bonificare a mano.
+    const canRename = await canManageStudent(oldName);
+    if (canRename !== true) {
+      alert(
+        canRename === false
+          ? `"${oldName}" è un vocabolario condiviso da una collega.\n\n` +
+            'Solo chi lo ha creato può cambiarne l\'etichetta: così il nome resta uguale ' +
+            'per tutte e non si creano copie doppie.\n\n' +
+            'Se il nome va corretto, chiedilo alla collega che te lo ha condiviso.'
+          : 'Non riesco a verificare su Drive se questo vocabolario è tuo o condiviso ' +
+            'da una collega.\n\nPer sicurezza la rinomina è sospesa: controlla la ' +
+            'connessione e riprova fra poco.'
+      );
+      return;
+    }
+
     // Stesso avviso privacy del pulsante "+ Nuovo" — la rinomina è l'altra porta
     // d'ingresso da cui un nome per esteso può entrare nel sistema.
     const input = prompt(
@@ -1627,7 +1666,20 @@ function _updateRemoveBtn(studentName) {
   const btn = $('btn-remove-student');
   btn.style.display = studentName ? 'inline-block' : 'none';
   const renameBtn = $('btn-rename-student');
-  if (renameBtn) renameBtn.style.display = studentName ? 'inline-block' : 'none';
+  if (renameBtn) {
+    renameBtn.style.display = studentName ? 'inline-block' : 'none';
+    // Vocabolario ricevuto da una collega: l'etichetta la decide chi lo ha creato
+    // (regola 26/07/2026). Il pulsante resta visibile ma spento, così è chiaro che
+    // la funzione esiste e non è sparita — la spiegazione arriva dall'handler e dal
+    // tooltip. Guardia sincrona: il caso "non determinabile" lo copre l'handler.
+    // NON si usa `disabled`: un pulsante morto sulla LIM non spiega nulla (il tooltip
+    // non esiste al tocco). Resta cliccabile e mostra il messaggio che dice perché.
+    const received = studentName ? isSharedStudent(studentName) : false;
+    renameBtn.style.opacity = received ? '0.5' : '';
+    renameBtn.title = received
+      ? 'Vocabolario condiviso da una collega: l\'etichetta la cambia chi lo ha creato'
+      : 'Cambia etichetta alunno';
+  }
   // Il vocabolario completo ha senso solo con un alunno specifico selezionato —
   // in modalità "uso generico" nascondiamo il pulsante (nessun nome da mostrare).
   if (btnPrintVocab) {
@@ -1709,18 +1761,8 @@ async function _refreshDriveSharePanel() {
   if (noStudentEl)   noStudentEl.style.display   = 'none';
   if (withStudentEl) withStudentEl.style.display = 'block';
 
-  // Carica il codice (file ID) per questo alunno
-  if (codeEl) {
-    codeEl.value = '⏳ Carico codice…';
-    const code = await getStudentShareCode(studentName);
-    codeEl.value = code || '— salva prima un vocabolario per questo alunno —';
-    if (fileNameEl) {
-      const safeName = studentName.replace(/[/\\?%*:|"<>]/g, '-');
-      fileNameEl.textContent = `vocabolario-${safeName}.json`;
-    }
-  }
-
-  // Mostra vocabolari condivisi ricevuti
+  // Mostra vocabolari condivisi ricevuti (informativo: resta visibile anche quando
+  // la sezione di condivisione qui sotto è preclusa perché l'alunno non è proprio)
   const sharedStudentsEl = document.getElementById('drive-shared-students');
   const sharedListEl     = document.getElementById('drive-shared-list');
   const students = getStudentsList().filter(n => n && isSharedStudent(n));
@@ -1734,6 +1776,41 @@ async function _refreshDriveSharePanel() {
       sharedStudentsEl.style.display = 'none';
     }
   }
+
+  // ── Ri-condivisione riservata al proprietario (regola di Fabio 26/07/2026) ──
+  // Chi ha RICEVUTO un vocabolario non lo ricondivide a sua volta: ogni catena di
+  // condivisione parte da chi l'ha creato, così esiste sempre un solo responsabile
+  // del vocabolario (e del nome che ci sta sopra). Il controllo va fatto QUI, dove
+  // si può attendere la risposta di Drive: dentro gli handler dei pulsanti non si
+  // può, perché mailto:/clipboard devono partire a ridosso sincrono del click
+  // (vedi nota 18/07/2026 sopra _copyShareMessage) — un await lì li blocca in silenzio.
+  const canShare = await canManageStudent(studentName);
+  const shareBlockedEl = document.getElementById('drive-share-blocked');
+  if (canShare !== true) {
+    if (withStudentEl)   withStudentEl.style.display   = 'none';
+    if (shareBlockedEl) {
+      shareBlockedEl.style.display = 'block';
+      shareBlockedEl.textContent = canShare === false
+        ? `📂 "${studentName}" è condiviso con te da una collega: puoi usarlo e modificarlo, ` +
+          'ma la condivisione ad altre persone la gestisce chi lo ha creato.'
+        : '⚠️ Non riesco a verificare su Drive se questo vocabolario è tuo o condiviso. ' +
+          'La condivisione è sospesa per sicurezza: riprova fra poco.';
+    }
+    return;
+  }
+  if (shareBlockedEl) shareBlockedEl.style.display = 'none';
+
+  // Carica il codice (file ID) per questo alunno
+  if (codeEl) {
+    codeEl.value = '⏳ Carico codice…';
+    const code = await getStudentShareCode(studentName);
+    codeEl.value = code || '— salva prima un vocabolario per questo alunno —';
+    if (fileNameEl) {
+      const safeName = studentName.replace(/[/\\?%*:|"<>]/g, '-');
+      fileNameEl.textContent = `vocabolario-${safeName}.json`;
+    }
+  }
+
 }
 
 // ── Salvataggio Drive con debounce (evita chiamate troppo frequenti) ─

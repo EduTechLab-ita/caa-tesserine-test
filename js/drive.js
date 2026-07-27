@@ -306,6 +306,68 @@ export async function forgetSharedStudent(studentName) {
   if (code) await _forgetSharedStudent(studentName, code);
 }
 
+// ── Sposta la mappatura nome→shareCode dopo una rinomina ─────────────────
+// Vale SOLO per un vocabolario RICEVUTO da una collega (presente in
+// sharedShareCodes): aggiorna sia la memoria di sessione sia l'indice persistito
+// su Drive (indice-condivisi.json), che è l'unica traccia che sopravvive a un reload.
+// FIX (27/07/2026): questa logica esisteva solo dentro renameStudentOnDrive (rinomina
+// manuale), mentre il percorso di ADOZIONE di una rinomina remota (_adoptRemoteRename
+// in app.js) la saltava del tutto. Conseguenze reali osservate nel test incrociato del
+// 26/07: dopo un'adozione lo shareCode restava archiviato sotto il nome VECCHIO →
+// _getEffectiveShareCode(nuovoNome) tornava null → nessuna sottoscrizione push (il lato
+// ricevente diventava sordo agli aggiornamenti successivi) e, al reload, l'indice mai
+// aggiornato reintroduceva il nome vecchio accanto a quello nuovo → due alunni in elenco
+// con lo stesso vocabolario. Unico punto di verità, chiamato da entrambi i percorsi.
+export async function remapSharedStudentName(oldName, newName) {
+  const code = driveState.sharedShareCodes?.[oldName];
+  if (!code) return; // non è un vocabolario ricevuto: niente da rimappare
+  delete driveState.sharedShareCodes[oldName];
+  driveState.sharedShareCodes[newName] = code;
+  saveDriveState(); // parte sincrona: vale anche se il chiamante non attende
+  try {
+    const entries = await loadSharedIndex();
+    const entry = entries.find(e => e.code === code);
+    if (entry) entry.name = newName; else entries.push({ name: newName, code });
+    await saveSharedIndex(entries);
+  } catch(e) { /* non bloccante: il nome resta comunque aggiornato per questa sessione */ }
+}
+
+// ── Posso rinominare / ricondividere questo vocabolario? ─────────────────
+// Regola decisa da Fabio il 26/07/2026: rinomina e ri-condivisione sono riservate
+// al PROPRIETARIO. Chi riceve un vocabolario condiviso lo usa e lo modifica, ma non
+// può rinominarlo né ricondividerlo — così il campo `student` su Firebase ha una sola
+// sorgente di scrittura e il conflitto che generava i doppioni non può più nascere.
+// Ritorna: true = proprietario certo · false = ricevuto da una collega ·
+// null = NON DETERMINABILE (rete/Drive non raggiungibili). Il chiamante deve trattare
+// null come divieto (fail-safe voluto: nel dubbio si VIETA, meglio un'operazione
+// rimandata che un doppione da bonificare a mano).
+// Distinta da isOwnStudent() più sotto, che risponde a una domanda diversa ("esiste un
+// file Drive personale?", usata per l'eliminazione definitiva) e in caso di dubbio
+// risponde false senza distinguere l'alunno solo locale: qui invece un alunno creato
+// offline o non ancora salvato su Drive è a tutti gli effetti proprio, e va rinominabile.
+export async function canManageStudent(studentName) {
+  if (!studentName) return true;                       // "uso generico": nessuna condivisione in gioco
+  if (!isDriveConnected()) return true;                // alunno solo locale: è suo
+  if (driveState.sharedShareCodes?.[studentName]) return false; // ricevuto, certo
+  if (!driveState.folderId) return null;               // Drive connesso ma cartella ignota: dubbio
+  try {
+    const { fileId } = await _findVerifiedOwnFile(studentName);
+    if (fileId) return true;                           // file personale trovato: proprietario certo
+  } catch(e) {
+    return null;                                       // Drive non raggiungibile: dubbio
+  }
+  // Nessun file personale: può essere un alunno creato in locale e non ancora salvato
+  // su Drive (proprio) OPPURE un ricevuto la cui mappa in memoria non è ancora stata
+  // ripristinata dopo un reload (sharedShareCodes vive solo in sessione). Si rilegge
+  // l'indice condivisi su Drive, che è la fonte persistente, invece di indovinare.
+  try {
+    const entries = await loadSharedIndex();
+    return !entries.some(e => e.name === studentName);
+  } catch(e) {
+    return null;                                       // indice illeggibile: dubbio
+  }
+}
+
 // ── Trova o crea la cartella CAArtella/ ──────────────────────────
 async function findOrCreateDriveFolder() {
   const q = encodeURIComponent(
@@ -610,25 +672,13 @@ export async function renameStudentOnDrive(oldName, newName, dict, custom, label
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: payload
     });
     if (!putResp.ok) throw new Error('Rinomina condivisa fallita (' + putResp.status + ')');
-    if (driveState.sharedShareCodes?.[oldName]) {
-      delete driveState.sharedShareCodes[oldName];
-      driveState.sharedShareCodes[newName] = shareCode;
-      saveDriveState();
-
-      // Aggiorna anche l'indice persistito su Drive (indice-condivisi.json), altrimenti
-      // al prossimo reconnect restoreSharedIndex() ripristina il nome vecchio — bug reale
-      // (19/07/2026): una collega rinominava "EMMA ROSSINI" in "EMMA", disconnetteva e
-      // riconnetteva, e ricompariva "EMMA ROSSINI". Causa: sharedShareCodes vive solo in
-      // memoria di sessione (per privacy su PC condivisi, vedi nota in cima al file), quindi
-      // l'indice su Drive è l'UNICA fonte che sopravvive a un reload — se non si aggiorna
-      // anche lui, la rinomina si perde ad ogni riconnessione.
-      try {
-        const entries = await loadSharedIndex();
-        const entry = entries.find(e => e.code === shareCode);
-        if (entry) entry.name = newName; else entries.push({ name: newName, code: shareCode });
-        await saveSharedIndex(entries);
-      } catch(e) { /* non bloccante: il nome resta comunque aggiornato per questa sessione */ }
-    }
+    // Sposta la mappatura nome→codice in memoria E nell'indice su Drive. Senza
+    // l'aggiornamento dell'indice, al prossimo reconnect restoreSharedIndex()
+    // ripristinerebbe il nome vecchio — bug reale (19/07/2026): una collega rinominava
+    // "EMMA ROSSINI" in "EMMA", disconnetteva e riconnetteva, e ricompariva "EMMA
+    // ROSSINI". Logica unica in remapSharedStudentName (no-op se non è un ricevuto),
+    // condivisa con _adoptRemoteRename in app.js — vedi la nota lì sopra.
+    await remapSharedStudentName(oldName, newName);
   }
 
   // Alunno proprio (file Drive personale trovato): rinomina anche lì, indipendentemente
