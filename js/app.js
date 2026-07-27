@@ -610,6 +610,16 @@ window._connectShared = async () => {
     dictionary   = data.dict;
     customImages = data.custom || {};
     customLabels = data.labels || {};
+    // FIX (27/07/2026 — difetto 1 del test incrociato): senza questo il vocabolario
+    // appena installato NON viene messo in ascolto. La sottoscrizione push viene
+    // aperta solo dall'handler `change` del selettore, che scatta unicamente se
+    // l'utente muove il menù a tendina con la mano: qui l'alunno è selezionato via
+    // codice, quindi l'handler non passa mai. Effetto osservato dal vivo (e per due
+    // giorni scambiato per "il push non consegna"): chi riceveva un vocabolario
+    // restava sordo agli aggiornamenti finché non deselezionava e riselezionava
+    // l'alunno a mano — il "giochetto" non era un rimedio a un ritardo, era l'unico
+    // modo di far partire l'ascolto.
+    _resubscribeLive(finalName);
     closeDriveModal();
     showStatus(finalName === data.studentName
       ? `✅ Vocabolario di "${finalName}" caricato e sincronizzato!`
@@ -637,6 +647,7 @@ window._connectSharedPost = async () => {
     dictionary   = data.dict;
     customImages = data.custom || {};
     customLabels = data.labels || {};
+    _resubscribeLive(finalName); // mette subito in ascolto — vedi nota in _connectShared
     if (input) input.value = '';
     sessionStorage.removeItem(PENDING_SHARE_KEY); // codice usato, pulizia
     const banner = document.getElementById('drive-incoming-banner');
@@ -1230,6 +1241,7 @@ async function handleImportDict(e) {
       saveLabelsForStudent(student, labels);
       setCurrentStudent(student);
       updateStudentSelector(student);
+      _resubscribeLive(student); // stesso motivo di _connectShared: selezione via codice, l'handler `change` non passa
       dictionary   = loadDictionaryForStudent(student);
       customImages = loadCustomImagesForStudent(student);
       customLabels = loadLabelsForStudent(student);
