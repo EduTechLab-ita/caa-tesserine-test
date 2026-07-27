@@ -288,11 +288,25 @@ function _fmtWordList(words, max = 6) {
 // Rimuove l'alunno fantasma e ripulisce lo stato condiviso (memoria + indice Drive).
 async function _handleSharedDeleted(name) {
   await forgetSharedStudent(name);
-  if (getCurrentStudent() !== name) return; // non è quello in vista: basta dimenticarlo
-  if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
+  const wasCurrent = getCurrentStudent() === name;
+  // FIX (27/07/2026): prima, se in vista c'era un altro alunno, la funzione usciva
+  // qui dopo aver solo "dimenticato" il codice — l'alunno restava in elenco e il suo
+  // vocabolario (parole, etichette, immagini) restava nel browser senza più nulla che
+  // lo mostrasse o potesse cancellarlo. Dati di alunni con disabilità che sopravvivono
+  // a un'eliminazione: inaccettabile lato privacy. Ora la pulizia avviene sempre; solo
+  // il ripristino della vista (svuotare l'anteprima, azzerare la selezione) resta
+  // condizionato al fatto che fosse davvero l'alunno aperto.
+  if (wasCurrent && _liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
   removeStudent(name);
   deleteStudentData(name);
   localStorage.removeItem(`caa_custom_v2_${name}`);
+  if (!wasCurrent) {
+    updateStudentSelector(); // mantiene selezionato l'alunno che si stava già guardando
+    const bgMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
+    showStatus(bgMsg, 'error');
+    addNotification(bgMsg);
+    return;
+  }
   updateStudentSelector('');
   setCurrentStudent('');
   dictionary   = loadDictionary();
@@ -1568,7 +1582,12 @@ function initStudentSelector() {
       return;
     }
     removeStudent(name);
-    deleteStudentData(name);
+    deleteStudentData(name); // dizionario + etichette
+    // FIX (27/07/2026): le immagini personalizzate hanno una chiave a parte, che
+    // deleteStudentData NON tocca — questo era l'unico dei quattro punti di
+    // cancellazione a dimenticarla, lasciando le immagini (spesso foto scattate in
+    // classe) nel browser dopo un'eliminazione dichiarata "definitiva".
+    localStorage.removeItem(`caa_custom_v2_${name}`);
     updateStudentSelector('');
     setCurrentStudent('');
     dictionary   = loadDictionary();
