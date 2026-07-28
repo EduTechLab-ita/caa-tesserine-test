@@ -223,11 +223,12 @@ export async function connectToDrive() {
         driveState.tokenExpiry = 0;
         saveDriveState();
         updateDriveButton();
+        // Testo tenuto corto di proposito (28/07/2026): nel box rosso reale la versione
+        // lunga faceva più ansia che chiarezza a chi è già in difficoltà.
         showDrivePanel('error',
-          'Manca il permesso di accesso a Google Drive. Nella schermata di Google, ' +
-          'accanto alla riga "…file di Google Drive specifici che usi con questa app", ' +
-          'c\'è una CASELLA da spuntare: va selezionata prima di premere Continua. ' +
-          'Senza quel permesso l\'app non può salvare i vocabolari. Clicca "Riprova".');
+          'Manca il permesso per Google Drive. Nella schermata di Google c\'è una ' +
+          'casella da spuntare accanto alla riga di Google Drive: selezionala, poi ' +
+          'premi Continua. Senza quel permesso l\'app non può salvare i vocabolari.');
         return;
       }
       driveState.accessToken = tokenResponse.access_token;
