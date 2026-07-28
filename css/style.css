@@ -33,15 +33,22 @@ body {
   /* Contiene l'icona vera dell'app (SVG inline, 28/07/2026) al posto della vecchia
      emoji: niente sfondo tondo semitrasparente, che con un'icona gia' squadrata
      creava due forme sovrapposte. Resta la leggera ombra per staccarla dal viola. */
-  width: 52px;
-  height: 52px;
+  /* Alta quanto il blocco di testo accanto (titolo + firma + sottotitolo):
+     a 52px l'icona sembrava un francobollo di fianco a tre righe (28/07/2026). */
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.28));
 }
-.logo svg { display: block; border-radius: 8px; }
+.logo svg { display: block; width: 100%; height: 100%; border-radius: 12px; }
+@media (max-width: 640px) {
+  /* Su telefono le tre righe si riflowano e l'header si stringe: l'icona torna piccola. */
+  .logo { width: 56px; height: 56px; }
+  .logo svg { border-radius: 9px; }
+}
 .by-line {
   font-size: 0.78rem;
   opacity: 0.7;
