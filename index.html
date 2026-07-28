@@ -29,7 +29,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.39</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.40</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -74,6 +74,25 @@
   <!-- Drive Save Toast -->
   <div id="drive-toast" class="drive-toast no-print">
     <span class="drive-toast-msg">✅ Dizionario salvato su Drive</span>
+  </div>
+
+  <!-- Avviso "niente resta su questo computer" (28/07/2026, decisione di Fabio).
+       CAArtella non conserva più nulla sul dispositivo: con Drive collegato i dati
+       vivono su Drive (vocabolari propri) e Firebase (condivisi), senza Drive
+       vivono solo finché la scheda resta aperta. Chi lavora un'ora senza essersi
+       accorto di non essere collegato perderebbe tutto alla chiusura, quindi
+       l'avviso resta FISSO finché Drive non viene collegato — non è un toast che
+       sparisce. Si nasconde in stampa (no-print). -->
+  <div id="local-warning" class="local-warning no-print hidden">
+    <span class="local-warning-icon">⚠️</span>
+    <div class="local-warning-text">
+      <strong>Non sei collegato a Google Drive.</strong>
+      Puoi lavorare e stampare normalmente, ma <strong>nulla verrà salvato</strong>:
+      chiudendo questa pagina il vocabolario andrà perso. CAArtella non conserva dati
+      su questo computer — è una scelta di tutela per gli alunni, specie sui PC condivisi
+      della scuola.
+    </div>
+    <button type="button" id="local-warning-connect" class="local-warning-btn">Collega Drive</button>
   </div>
 
   <!-- Banner di stato in sovraimpressione (19/07/2026, richiesta ripetuta di
@@ -145,7 +164,7 @@
           <b>⚠️ Importante — protezione dei dati</b><br>
           Quando crei un alunno <b>non scrivere il suo nome per esteso</b>: usa le
           <b>iniziali</b> o uno <b>pseudonimo</b> (es. <i>"E.R."</i>, <i>"M.B."</i>, <i>"Sole"</i>).<br><br>
-          <b>Perché:</b> l'etichetta che scegli viene salvata nel tuo browser, nel file su
+          <b>Perché:</b> l'etichetta che scegli viene salvata nel file su
           Google Drive e — se condividi il vocabolario con una collega — anche sul server di
           sincronizzazione. Poiché un vocabolario CAA riguarda un alunno con bisogni
           comunicativi specifici, associarvi il nome completo significherebbe trattare un
@@ -205,17 +224,50 @@
         <p>Le immagini personalizzate vengono incluse nell'esportazione del dizionario — condividendo il file JSON, le colleghe ricevono anche tutte le immagini.</p>
       </div>
 
+      <!-- Sezione aggiunta il 28/07/2026 con la modifica "niente resta sul computer".
+           Sta prima del backup JSON perché spiega il principio che regge tutte le
+           risposte pratiche sotto ("dove finiscono i miei dati?"). -->
       <div class="info-section">
-        <h4>💾 10. Backup manuale (JSON)</h4>
-        <p>Puoi sempre esportare e importare il vocabolario come file JSON dalla barra degli strumenti sopra l'anteprima. Utile come backup aggiuntivo o per condivisione rapida via WhatsApp.</p>
-        <p style="background:#fef9c3;border-left:3px solid #eab308;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
-          ⚠️ Senza Drive, il vocabolario è salvato <b>solo su questo browser</b>. Se cancelli la cache o cambi PC, va perso. Usa Drive per la sicurezza vera.
+        <h4>🔒 10. Dove finiscono i dati (e cosa NON resta sul computer)</h4>
+        <p>CAArtella <b>non conserva nulla su questo computer</b>. Né i vocabolari, né le
+        etichette, né le foto che carichi sulle tessere.</p>
+        <ul>
+          <li><b>Con Google Drive collegato</b> — i vocabolari dei tuoi alunni stanno sul
+              <b>tuo</b> Drive; i vocabolari condivisi con le colleghe passano dal server di
+              sincronizzazione. Il computer è solo una finestra su quei dati.</li>
+          <li><b>Senza Drive collegato</b> — l'app funziona lo stesso: cerchi i pittogrammi,
+              generi e stampi. Ma quello che fai <b>vive solo finché la pagina resta aperta</b>:
+              chiudendola, sparisce.</li>
+          <li><b>Vocabolari ricevuti da una collega</b> — per aprirli serve il collegamento a
+              Drive, perché non ne esiste nessuna copia sul tuo computer. Se la collega che te
+              l'ha condiviso lo elimina, sparisce anche da qui.</li>
+        </ul>
+        <p style="background:#f0fdf4;border-left:3px solid #86efac;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
+          ✅ <b>Perché è fatto così:</b> CAArtella si usa spesso su PC condivisi della scuola.
+          Un vocabolario CAA riguarda un alunno con bisogni comunicativi specifici, e le foto
+          delle tessere sono spesso scattate in classe: non devono restare su una macchina che
+          usano anche altri. Nulla sul disco significa nulla da dimenticare lì.
+        </p>
+        <p style="font-size:0.85rem;margin-top:0.5rem;">
+          Per i pittogrammi serve comunque la connessione a Internet: le immagini vengono
+          scaricate ogni volta dal sito <b>ARASAAC</b>, non sono conservate nell'app.
         </p>
       </div>
 
       <div class="info-section">
-        <h4>📱 11. Installa come app</h4>
-        <p>Puoi installare CAArtella direttamente sul tuo dispositivo per usarla senza connessione:</p>
+        <h4>💾 11. Backup manuale (JSON)</h4>
+        <p>Puoi sempre esportare e importare il vocabolario come file JSON dalla barra degli strumenti sopra l'anteprima. Utile come backup aggiuntivo o per condivisione rapida via WhatsApp.</p>
+        <p style="background:#fef9c3;border-left:3px solid #eab308;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
+          ⚠️ Senza Drive collegato il vocabolario <b>non viene salvato da nessuna parte</b>:
+          resta finché tieni aperta la pagina e si perde quando la chiudi. Collega Drive
+          (oppure esporta il JSON qui sopra) se vuoi conservarlo.
+        </p>
+      </div>
+
+      <div class="info-section">
+        <h4>📱 12. Installa come app</h4>
+        <p>Puoi installare CAArtella direttamente sul tuo dispositivo, così si apre come una
+        vera app senza passare dal browser (serve comunque Internet per i pittogrammi):</p>
         <ul>
           <li><b>PC / Mac</b> — nel browser Chrome/Edge: icona ⊕ nella barra degli indirizzi → "Installa app"</li>
           <li><b>Android</b> — Chrome: menu ⋮ → "Aggiungi a schermata Home"</li>
@@ -491,7 +543,8 @@
           </button>
         </div>
         <p style="font-size:0.75rem;color:#94a3b8;margin-top:10px;text-align:center;">
-          🔒 Su PC condiviso? Disconnetti al termine: rimuove i tuoi dati dal browser.
+          🔒 Su PC condiviso? Disconnetti al termine: i vocabolari non restano su questo
+          computer in nessun caso, ma così togli anche il tuo account.
         </p>
       </div>
 

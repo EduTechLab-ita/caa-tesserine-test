@@ -20,9 +20,14 @@ const SEED_DICTIONARY = {
 // ══════════════════════════════════════════════════════════════════
 
 /** Carica la struttura alunni da localStorage. */
+// L'elenco alunni e l'alunno selezionato vivono in memoria di sessione come tutto
+// il resto (28/07/2026, vedi ephemeral-store.js): sono nomi — pseudonimi o iniziali
+// per policy, ma pur sempre l'indizio che di quell'alunno esiste un vocabolario CAA.
+// Con Drive collegato l'elenco si ricostruisce da solo all'avvio
+// (syncStudentListFromDrive); senza Drive si riparte da "uso generico".
 function loadStudentsData() {
   try {
-    const saved = localStorage.getItem(STUDENTS_KEY);
+    const saved = studentStoreGet('', STUDENTS_KEY);
     if (saved) return JSON.parse(saved);
   } catch(e) {}
   // Struttura iniziale: alunno "anonimo" (stringa vuota)
@@ -30,7 +35,7 @@ function loadStudentsData() {
 }
 
 function saveStudentsData(data) {
-  localStorage.setItem(STUDENTS_KEY, JSON.stringify(data));
+  studentStoreSet('', STUDENTS_KEY, JSON.stringify(data));
 }
 
 /** Restituisce la lista degli alunni. '' = anonimo. */

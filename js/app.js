@@ -28,6 +28,7 @@ import {
 // perché in cima a ephemeral-store.js.
 import {
   studentStoreGet, studentStoreSet, studentStoreRemove, isEphemeralStudent,
+  purgeAllStudentDataFromDisk,
 } from './ephemeral-store.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -52,6 +53,13 @@ import {
   addCustomImage, removeCustomImage,
   fileToDataURL, exportAll, importAll, CUSTOM_PREFIX,
 } from './custom-images.js';
+
+// ── Nessun dato di vocabolario resta su questo computer (28/07/2026) ──────
+// Prima riga eseguita dall'app, prima di qualsiasi lettura: toglie dal disco ogni
+// residuo delle versioni fino alla v5.39 (dizionari, etichette, foto, elenco
+// alunni). Da qui in poi nulla viene più scritto — i dati vivono su Drive/Firebase
+// se si è collegati, altrimenti solo finché la scheda resta aperta.
+purgeAllStudentDataFromDisk();
 
 // ── Stato globale ──────────────────────────────────────────────
 let dictionary     = loadDictionary();
@@ -147,12 +155,15 @@ initStudentSelector();
 // immediato "one-shot" (_refreshCurrentStudentFromDrive) appena Drive è pronto,
 // così l'alunno già in vista si allinea subito all'ultima versione remota
 // invece di aspettare passivamente il prossimo evento push.
+_refreshLocalWarning(); // stato iniziale: mostrato finché Drive non risponde
+
 loadDriveConfig(() => {
   // Drive connesso al caricamento pagina (token già valido o silent auth)
   syncStudentListFromDrive();
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
   _verifySharedStudentsAtBoot();
+  _refreshLocalWarning();
 });
 
 // Drive connesso dopo login manuale (click sul pulsante) — es. Chromebook pulito
@@ -161,6 +172,7 @@ document.addEventListener('caa-drive-connected', () => {
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
   _verifySharedStudentsAtBoot();
+  _refreshLocalWarning();
 });
 
 // ── Aggiornamento in tempo reale per vocabolari condivisi ──────────
@@ -326,6 +338,20 @@ async function _handleSharedDeleted(name) {
   showStatus(delMsg, 'error');
   addNotification(delMsg);
 }
+
+// ── Avviso fisso: senza Drive nulla viene salvato (28/07/2026) ───────────
+// Va aggiornato ad ogni cambio di stato della connessione, non solo all'avvio:
+// chi collega Drive a metà lavoro deve vederlo sparire, e chi si disconnette
+// deve vederlo comparire. Il pulsante apre lo stesso pannello del FAB in basso.
+function _refreshLocalWarning() {
+  const box = document.getElementById('local-warning');
+  if (!box) return;
+  box.classList.toggle('hidden', isDriveConnected());
+}
+
+document.getElementById('local-warning-connect')?.addEventListener('click', () => {
+  openDriveModal();
+});
 
 // ── Verifica al boot: i vocabolari ricevuti esistono ancora? ─────────────
 // Aggiunta 28/07/2026. La sottoscrizione push (_resubscribeLive) copre SOLO
@@ -528,6 +554,7 @@ window._disconnectDrive = () => disconnectDrive(() => {
   customImages = loadCustomImagesForStudent('');
   customLabels = loadLabelsForStudent('');
   if (tiles.length > 0) renderPages();
+  _refreshLocalWarning(); // da qui in poi nulla verrà più salvato: va detto
 });
 // Costruisce il testo del messaggio di condivisione (riusato da copia e mailto)
 function _buildShareMessage(code, studentName) {

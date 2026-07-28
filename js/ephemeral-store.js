@@ -124,22 +124,58 @@ export function forgetEphemeralData(studentName) {
 // ── Instradamento lettura/scrittura ──────────────────────────────────────
 // Le funzioni di dictionary.js e app.js passano tutte di qui invece di chiamare
 // localStorage direttamente: unico punto in cui si decide dove finisce un dato.
+//
+// DECISIONE DI FABIO (28/07/2026): «Non voglio nulla in locale che rimanga sui PC
+// della scuola». Quindi NESSUN dato di vocabolario tocca più il disco — non solo i
+// ricevuti, ma anche gli alunni propri e l'uso generico. Con Drive collegato i dati
+// vivono su Drive (propri) e Firebase (condivisi) e il browser è solo una finestra;
+// senza Drive collegato vivono quanto la scheda resta aperta, e poi spariscono.
+//
+// Il motivo per cui anche l'"uso generico" rientra, benché non abbia un nome
+// alunno accanto: da lì si possono caricare IMMAGINI PERSONALIZZATE, che sono
+// spesso foto scattate in classe. Una foto di un minore è un dato personale anche
+// senza etichetta — anzi peggio, perché senza un nome non si sa nemmeno di chi sia
+// per poterla cancellare. Restava in `caa_custom_images_v1` a tempo indeterminato.
+//
+// isEphemeralStudent() resta e continua a distinguere i RICEVUTI dai propri: non
+// serve più a decidere dove salvare (ormai è sempre la memoria) ma a sapere quando
+// avvisare che serve Drive per aprire un vocabolario di una collega.
 
 export function studentStoreGet(studentName, key) {
-  if (isEphemeralStudent(studentName)) return _mem.has(key) ? _mem.get(key) : null;
-  try { return localStorage.getItem(key); } catch(e) { return null; }
+  return _mem.has(key) ? _mem.get(key) : null;
 }
 
 export function studentStoreSet(studentName, key, value) {
-  if (isEphemeralStudent(studentName)) { _mem.set(key, value); return; }
-  try { localStorage.setItem(key, value); } catch(e) {}
+  _mem.set(key, value);
 }
 
-// Rimuove da entrambi i lati di proposito: se un nome ha smesso di essere
-// ricevuto (o lo è diventato da poco) non deve restare una copia dall'altra parte.
 export function studentStoreRemove(studentName, key) {
   _mem.delete(key);
-  try { localStorage.removeItem(key); } catch(e) {}
+  try { localStorage.removeItem(key); } catch(e) {} // eventuali residui di versioni precedenti
+}
+
+// ── Pulizia di ogni residuo su disco ─────────────────────────────────────
+// Chiamata una volta all'avvio. Nessun flag di versione e nessuno stato da
+// mantenere: dato che dalla v5.40 nulla viene più scritto, tutto ciò che si trova
+// qui è per definizione un residuo delle versioni precedenti (o di un'altra app
+// che condivide l'origine) e va tolto. Vale anche da migrazione una tantum.
+export function purgeAllStudentDataFromDisk() {
+  const toRemove = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('caa_dict_v2_')   ||
+        key.startsWith('caa_custom_v2_') ||
+        key.startsWith('caa_labels_v1_') ||
+        key === 'caa_students_v1'        ||
+        key === 'caa_dictionary_v1'      ||
+        key === 'caa_custom_images_v1'
+      )) toRemove.push(key);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+  return toRemove.length;
 }
 
 /** Elenco dei nomi ricevuti conosciuti — usato dalla pulizia alla disconnessione. */
