@@ -20,6 +20,7 @@ import {
   isOwnStudent, deleteStudentFromDrive, syncOwnFileNameToDrive,
   getShareCodeForStudent, subscribeSharedStudent, forgetSharedStudent,
   getDriveUserEmail, remapSharedStudentName, canManageStudent,
+  getSharedStudentNames, checkSharedAlive,
 } from './drive.js';
 
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
@@ -144,6 +145,7 @@ loadDriveConfig(() => {
   syncStudentListFromDrive();
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
+  _verifySharedStudentsAtBoot();
 });
 
 // Drive connesso dopo login manuale (click sul pulsante) — es. Chromebook pulito
@@ -151,6 +153,7 @@ document.addEventListener('caa-drive-connected', () => {
   syncStudentListFromDrive();
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
+  _verifySharedStudentsAtBoot();
 });
 
 // ── Aggiornamento in tempo reale per vocabolari condivisi ──────────
@@ -315,6 +318,45 @@ async function _handleSharedDeleted(name) {
   const delMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
   showStatus(delMsg, 'error');
   addNotification(delMsg);
+}
+
+// ── Verifica al boot: i vocabolari ricevuti esistono ancora? ─────────────
+// Aggiunta 28/07/2026. La sottoscrizione push (_resubscribeLive) copre SOLO
+// l'alunno in vista: se il proprietario elimina un vocabolario che questa collega
+// non sta guardando, nessun evento arriva mai e voce in elenco + dati locali
+// restano nel browser a tempo indeterminato — verificato dal vivo il 27/07 (TEST-3
+// è rimasto con dizionario ed etichette finché non è stato selezionato a mano).
+// Qui, ad ogni avvio con Drive connesso, si controllano UNO ALLA VOLTA tutti i
+// vocabolari ricevuti e si ripulisce quello che il proprietario ha eliminato,
+// riusando lo stesso percorso dell'evento push (_handleSharedDeleted): stessa
+// pulizia, stessa notifica, nessuna logica duplicata.
+// Sequenziale e non in parallelo di proposito: gira in sottofondo subito dopo
+// l'avvio, non c'è nessuna fretta e si evita di aprire N connessioni insieme.
+// Solo 'deleted' cancella: 'unknown' (token, rete, regole, timeout) non tocca
+// niente e si riproverà al prossimo avvio — vedi la nota in checkSharedAlive.
+let _bootVerifyRunning = false; // i due percorsi di avvio (token in cache / login manuale) possono sovrapporsi
+async function _verifySharedStudentsAtBoot() {
+  if (!isDriveConnected() || _bootVerifyRunning) return;
+  _bootVerifyRunning = true;
+  try {
+    await _verifySharedStudents();
+  } finally {
+    _bootVerifyRunning = false;
+  }
+}
+
+async function _verifySharedStudents() {
+  const current = getCurrentStudent();
+  for (const name of getSharedStudentNames()) {
+    if (name === current) continue;                    // già coperto dalla sottoscrizione live
+    if (!getStudentsList().includes(name)) continue;   // non più in elenco: niente da ripulire
+    const code = await getShareCodeForStudent(name);
+    if (!code) continue;
+    const state = await checkSharedAlive(code);
+    if (state !== 'deleted') continue;
+    if (!getStudentsList().includes(name)) continue;   // rimosso nel frattempo (es. push arrivato prima)
+    await _handleSharedDeleted(name);
+  }
 }
 
 // ── Campanella avvisi + elenco notifiche di sessione (19/07 → 20/07/2026) ──

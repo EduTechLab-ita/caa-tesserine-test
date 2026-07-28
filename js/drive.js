@@ -641,6 +641,71 @@ export function subscribeSharedStudent(shareCode, onChange, onDelete) {
   };
 }
 
+// ── Elenco dei vocabolari RICEVUTI da colleghe (nomi locali) ─────────────
+// Serve alla verifica al boot in app.js: sharedShareCodes vive solo in memoria di
+// sessione, ma viene ripopolato da restoreSharedIndex() (indice-condivisi.json su
+// Drive) prima che l'app riceva il segnale di Drive pronto — quindi al boot è già
+// completo. Gli alunni propri non compaiono qui: non c'è nessun proprietario
+// esterno che possa eliminarli alle spalle di questo browser.
+export function getSharedStudentNames() {
+  return Object.keys(driveState.sharedShareCodes || {});
+}
+
+// ── Questo vocabolario condiviso esiste ancora? ──────────────────────────
+// Aggiunta 28/07/2026 — chiude il buco descritto nel TODO 1 del 27/07: la
+// sottoscrizione push è aperta SOLO sull'alunno in vista, quindi se il proprietario
+// elimina un vocabolario che la collega non sta guardando, lei non lo scopre mai e
+// i dati (dizionario, etichette, immagini — spesso foto scattate in classe) restano
+// nel suo browser a tempo indeterminato. Su PC condivisi in sala professori, con
+// dati di alunni con disabilità, è il punto che va chiuso.
+//
+// ⚠️ NON implementata con una GET: Firebase risponde 200 + `null` anche quando le
+// REGOLE NEGANO la lettura (lezione 22/07/2026), quindi un GET vuoto è ambiguo e
+// cancellerebbe dati validi al primo intoppo di token. Qui si usa invece il **primo
+// evento `put` della connessione SSE**, che Firebase manda sempre all'apertura con
+// lo stato corrente del nodo: `data:null` su un nodo davvero inesistente è un
+// segnale genuino di cancellazione (è esattamente il meccanismo che il 27/07 ha
+// ripulito TEST-3 nel momento in cui la collega ha selezionato quel nome). Se
+// invece il permesso è negato o l'auth non è valida, Firebase chiude lo stream con
+// `cancel`/`auth_revoked` o un errore HTTP: non arriva nessun `put`, e la funzione
+// risponde 'unknown'.
+//
+// Ritorna: 'alive' = il nodo c'è · 'deleted' = eliminato (unico caso che autorizza
+// una pulizia) · 'unknown' = non determinabile (token, rete, regole, timeout).
+// Il chiamante DEVE trattare 'unknown' come "non toccare nulla": è lo stesso
+// fail-safe di canManageStudent (nel dubbio non si distrugge).
+export async function checkSharedAlive(shareCode, timeoutMs = 12000) {
+  if (!shareCode) return 'unknown';
+  let token;
+  try { token = await _fbAuthToken(); } catch(e) { return 'unknown'; }
+
+  return new Promise((resolve) => {
+    let es = null, timer = null, done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      if (es) es.close();          // connessione usa-e-getta: si chiude sempre
+      resolve(result);
+    };
+    try {
+      es = new EventSource(`${FIREBASE_DB_URL}/caartella-shared/${shareCode}.json?auth=${token}`);
+    } catch(e) { return finish('unknown'); }
+
+    es.addEventListener('put', (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload && payload.path === '/') finish(payload.data === null ? 'deleted' : 'alive');
+      } catch(err) { finish('unknown'); }
+    });
+    // Regole che negano la lettura o token invalidato: mai una cancellazione.
+    es.addEventListener('cancel',       () => finish('unknown'));
+    es.addEventListener('auth_revoked', () => finish('unknown'));
+    es.onerror = () => finish('unknown');
+    timer = setTimeout(() => finish('unknown'), timeoutMs);
+  });
+}
+
 // ── Rinomina un alunno (proprio o condiviso), propagando la modifica ─────
 // Alunno condiviso (proprio già condiviso, o ricevuto): riscrive il campo
 // "student" su Firebase — chiunque altro veda questo shareCode lo scoprirà al
