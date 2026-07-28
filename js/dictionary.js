@@ -3,6 +3,10 @@
 //  v2: supporto multi-alunno (retrocompatibile con v1)
 // ══════════════════════════════════════════════════════════════════
 
+import {
+  studentStoreGet, studentStoreSet, studentStoreRemove, clearAllEphemeral,
+} from './ephemeral-store.js';
+
 const STUDENTS_KEY  = 'caa_students_v1';   // lista alunni + alunno corrente
 const LEGACY_KEY    = 'caa_dictionary_v1'; // vecchio formato (migrazione)
 
@@ -77,8 +81,8 @@ export function renameStudentInList(oldName, newName) {
 /** Rimuove dizionario + etichette salvate per un alunno (usato dopo una rinomina,
  *  per non lasciare doppioni col vecchio nome). */
 export function deleteStudentData(name) {
-  localStorage.removeItem(dictKey(name));
-  localStorage.removeItem(labelsKey(name));
+  studentStoreRemove(name, dictKey(name));
+  studentStoreRemove(name, labelsKey(name));
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -89,10 +93,13 @@ function dictKey(studentName) {
   return studentName === '' ? LEGACY_KEY : `caa_dict_v2_${studentName}`;
 }
 
-/** Carica il dizionario per un alunno specifico. */
+/** Carica il dizionario per un alunno specifico.
+ *  Per un vocabolario RICEVUTO legge dalla memoria di sessione, non dal disco
+ *  (vedi ephemeral-store.js): se la scheda è appena stata aperta è vuoto, e verrà
+ *  riempito da Firebase — che per i condivisi è comunque la fonte di verità. */
 export function loadDictionaryForStudent(studentName) {
   try {
-    const stored = localStorage.getItem(dictKey(studentName));
+    const stored = studentStoreGet(studentName, dictKey(studentName));
     const local  = stored ? JSON.parse(stored) : {};
     return { ...SEED_DICTIONARY, ...local };
   } catch {
@@ -105,9 +112,9 @@ export function loadDictionary() {
   return loadDictionaryForStudent(getCurrentStudent());
 }
 
-/** Salva il dizionario per un alunno specifico. */
+/** Salva il dizionario per un alunno specifico (in memoria se è un ricevuto). */
 export function saveDictionaryForStudent(studentName, dict) {
-  localStorage.setItem(dictKey(studentName), JSON.stringify(dict));
+  studentStoreSet(studentName, dictKey(studentName), JSON.stringify(dict));
 }
 
 /** Salva il dizionario dell'alunno corrente. */
@@ -159,17 +166,17 @@ function labelsKey(studentName) {
   return studentName === '' ? 'caa_labels_v1_anon' : `caa_labels_v1_${studentName}`;
 }
 
-/** Carica le etichette per un alunno specifico. */
+/** Carica le etichette per un alunno specifico (memoria se ricevuto). */
 export function loadLabelsForStudent(studentName) {
   try {
-    const stored = localStorage.getItem(labelsKey(studentName));
+    const stored = studentStoreGet(studentName, labelsKey(studentName));
     return stored ? JSON.parse(stored) : {};
   } catch { return {}; }
 }
 
-/** Salva le etichette per un alunno specifico. */
+/** Salva le etichette per un alunno specifico (memoria se ricevuto). */
 export function saveLabelsForStudent(studentName, labels) {
-  localStorage.setItem(labelsKey(studentName), JSON.stringify(labels));
+  studentStoreSet(studentName, labelsKey(studentName), JSON.stringify(labels));
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -196,6 +203,7 @@ export function purgeAllLocalData() {
     }
   }
   toRemove.forEach(k => localStorage.removeItem(k));
+  clearAllEphemeral(); // anche i vocabolari ricevuti: memoria di sessione + elenco nomi
 }
 
 // ══════════════════════════════════════════════════════════════════

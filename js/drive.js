@@ -4,6 +4,10 @@
 //  Adattato da Valutazione Primaria (Drive) e da EduBoard (Firebase auth anonimo)
 // ══════════════════════════════════════════════════════════════════
 
+import {
+  markEphemeralStudent, unmarkEphemeralStudent, renameEphemeralStudent,
+} from './ephemeral-store.js';
+
 const DRIVE_CLIENT_ID   = '374342529488-c123a5j5v8hnfs241udbl55fos5thfq6.apps.googleusercontent.com';
 const DRIVE_SCOPE       = 'https://www.googleapis.com/auth/drive.file email profile';
 const DRIVE_FOLDER_NAME  = 'CAArtella';
@@ -272,7 +276,13 @@ async function restoreSharedIndex() {
   if (entries.length === 0) return;
   driveState.sharedShareCodes = driveState.sharedShareCodes || {};
   entries.forEach(({ name, code }) => {
-    if (name && code) driveState.sharedShareCodes[name] = code;
+    if (name && code) {
+      driveState.sharedShareCodes[name] = code;
+      // Anche da migrazione: se un browser aveva ancora su disco i dati di un
+      // vocabolario ricevuto (versioni fino alla v5.38), qui vengono cancellati.
+      // Nessuna perdita: per i condivisi la fonte di verità è Firebase.
+      markEphemeralStudent(name);
+    }
   });
   saveDriveState();
 }
@@ -291,6 +301,7 @@ async function _forgetSharedStudent(studentName, code) {
     delete driveState.sharedShareCodes[studentName];
     saveDriveState();
   }
+  unmarkEphemeralStudent(studentName); // svuota la copia in memoria e l'elenco nomi
   try {
     const entries = await loadSharedIndex();
     const filtered = entries.filter(e => e.code !== code);
@@ -324,6 +335,7 @@ export async function remapSharedStudentName(oldName, newName) {
   delete driveState.sharedShareCodes[oldName];
   driveState.sharedShareCodes[newName] = code;
   saveDriveState(); // parte sincrona: vale anche se il chiamante non attende
+  renameEphemeralStudent(oldName, newName); // segue anche la copia in memoria
   try {
     const entries = await loadSharedIndex();
     const entry = entries.find(e => e.code === code);
@@ -486,6 +498,7 @@ export function recordSharedCode(name, code) {
   driveState.sharedShareCodes = driveState.sharedShareCodes || {};
   driveState.sharedShareCodes[name] = code;
   saveDriveState();
+  markEphemeralStudent(name); // da qui in poi i suoi dati non toccano più il disco
 }
 
 // Se questo codice è già stato sincronizzato in passato, ritorna il nome locale

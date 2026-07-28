@@ -29,17 +29,22 @@ export function saveCustomImages(imgs) {
  * @param {string} dataURL - base64 dell'immagine
  * @returns {Object} dizionario aggiornato
  */
+// FIX (28/07/2026): queste due funzioni salvavano da sole in CUSTOM_KEY, che è la
+// chiave dell'alunno ANONIMO — qualunque fosse l'alunno selezionato. Ogni foto
+// caricata su una tessera finiva quindi anche in un secondo posto, sbagliato, che
+// nessuno ripuliva mai: né l'eliminazione di un alunno, né la rinomina, né la
+// pulizia dei condivisi. Con le foto scattate in classe (il dato più identificativo
+// che l'app tratti) era il buco più serio dei residui. Ora sono funzioni PURE: il
+// salvataggio spetta a chi sa a quale alunno appartiene il dato — app.js lo fa già
+// subito dopo ognuna delle tre chiamate, con saveCustomImages() per alunno.
 export function addCustomImage(imgs, word, dataURL) {
-  const updated = { ...imgs, [word.toUpperCase()]: dataURL };
-  saveCustomImages(updated);
-  return updated;
+  return { ...imgs, [word.toUpperCase()]: dataURL };
 }
 
 /** Rimuove un'immagine personalizzata. */
 export function removeCustomImage(imgs, word) {
   const updated = { ...imgs };
   delete updated[word.toUpperCase()];
-  saveCustomImages(updated);
   return updated;
 }
 

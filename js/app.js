@@ -23,6 +23,13 @@ import {
   getSharedStudentNames, checkSharedAlive,
 } from './drive.js';
 
+// I vocabolari RICEVUTI non toccano il disco: dizionario, etichette e immagini
+// passano da qui (memoria di sessione) invece che da localStorage — vedi il
+// perché in cima a ephemeral-store.js.
+import {
+  studentStoreGet, studentStoreSet, studentStoreRemove, isEphemeralStudent,
+} from './ephemeral-store.js';
+
 // Sceglie il nome locale definitivo per un vocabolario ricevuto via condivisione,
 // evitando di sovrascrivere un alunno già esistente con lo stesso nome (es. due
 // colleghe hanno entrambe un'alunna "Emma", persone diverse). Se questo stesso
@@ -186,7 +193,7 @@ async function _adoptRemoteRename(oldName, newName) {
   saveLabelsForStudent(newName, labelsToMove);
   saveCustomImagesForStudent(newName, imagesToMove);
   deleteStudentData(oldName);
-  localStorage.removeItem(`caa_custom_v2_${oldName}`);
+  studentStoreRemove(oldName, _customKey(oldName));
   renameStudentInList(oldName, newName);
   setCurrentStudent(newName);
   updateStudentSelector(newName);
@@ -302,7 +309,7 @@ async function _handleSharedDeleted(name) {
   if (wasCurrent && _liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
   removeStudent(name);
   deleteStudentData(name);
-  localStorage.removeItem(`caa_custom_v2_${name}`);
+  studentStoreRemove(name, _customKey(name));
   if (!wasCurrent) {
     updateStudentSelector(); // mantiene selezionato l'alunno che si stava già guardando
     const bgMsg = `🗑️ Il vocabolario di "${name}" è stato eliminato dal proprietario.`;
@@ -1534,6 +1541,18 @@ function initStudentSelector() {
     // Cambio alunno: l'anteprima tessere si riferisce al testo elaborato per
     // l'alunno precedente, va sempre azzerata (non ri-renderizzata sul nuovo dizionario).
     clearPreview();
+
+    // Vocabolario RICEVUTO aperto senza Drive collegato: non esiste una copia
+    // locale da mostrare (per scelta, vedi ephemeral-store.js) e senza connessione
+    // non si può scaricare da Firebase. Meglio dirlo chiaramente che lasciare un
+    // vocabolario apparentemente vuoto, che sembrerebbe una perdita di dati.
+    if (isEphemeralStudent(name) && !isDriveConnected()) {
+      showStatus(
+        `🔒 "${name}" è un vocabolario condiviso da una collega: collegati a Google Drive per aprirlo. ` +
+        `I vocabolari condivisi non restano salvati su questo computer.`,
+        'error'
+      );
+    }
   });
 
   $('btn-add-student').addEventListener('click', async () => {
@@ -1629,7 +1648,7 @@ function initStudentSelector() {
     // deleteStudentData NON tocca — questo era l'unico dei quattro punti di
     // cancellazione a dimenticarla, lasciando le immagini (spesso foto scattate in
     // classe) nel browser dopo un'eliminazione dichiarata "definitiva".
-    localStorage.removeItem(`caa_custom_v2_${name}`);
+    studentStoreRemove(name, _customKey(name));
     updateStudentSelector('');
     setCurrentStudent('');
     dictionary   = loadDictionary();
@@ -1697,7 +1716,7 @@ function initStudentSelector() {
     saveLabelsForStudent(newName, labelsToMove);
     saveCustomImagesForStudent(newName, imagesToMove);
     deleteStudentData(oldName);
-    localStorage.removeItem(`caa_custom_v2_${oldName}`);
+    studentStoreRemove(oldName, _customKey(oldName));
     renameStudentInList(oldName, newName);
     updateStudentSelector(newName);
     setCurrentStudent(newName);
@@ -1765,11 +1784,18 @@ function _updateRemoveBtn(studentName) {
   }
 }
 
-// Helper per caricare custom images per alunno specifico
+// Helper per caricare custom images per alunno specifico.
+// Come dizionario ed etichette, per un vocabolario RICEVUTO passano dalla memoria
+// di sessione e non toccano il disco (ephemeral-store.js). Qui la cosa pesa doppio:
+// le immagini custom sono spesso foto scattate in classe, il dato più identificativo
+// che l'app tratti.
+function _customKey(studentName) {
+  return studentName === '' ? 'caa_custom_images_v1' : `caa_custom_v2_${studentName}`;
+}
+
 function loadCustomImagesForStudent(studentName) {
-  const key = studentName === '' ? 'caa_custom_images_v1' : `caa_custom_v2_${studentName}`;
   try {
-    const saved = localStorage.getItem(key);
+    const saved = studentStoreGet(studentName, _customKey(studentName));
     return saved ? JSON.parse(saved) : {};
   } catch { return {}; }
 }
@@ -1779,8 +1805,7 @@ function saveCustomImages(imgs) {
 }
 
 function saveCustomImagesForStudent(studentName, imgs) {
-  const key = studentName === '' ? 'caa_custom_images_v1' : `caa_custom_v2_${studentName}`;
-  localStorage.setItem(key, JSON.stringify(imgs));
+  studentStoreSet(studentName, _customKey(studentName), JSON.stringify(imgs));
 }
 
 function saveLabels(lbls) {

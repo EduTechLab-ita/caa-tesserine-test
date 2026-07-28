@@ -3,7 +3,7 @@
 //  ⚙️  Aggiorna CACHE_NAME ad ogni deploy per forzare il refresh
 // ══════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'caartella-v5.38';
+const CACHE_NAME = 'caartella-v5.39';
 
 const STATIC_ASSETS = [
   './',
@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   './js/app.js',
   './js/dictionary.js',
   './js/drive.js',
+  './js/ephemeral-store.js',
   './js/parser.js',
   './js/arasaac.js',
   './js/lemmatizer.js',
