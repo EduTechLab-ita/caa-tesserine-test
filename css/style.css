@@ -30,17 +30,18 @@ body {
 }
 
 .logo {
-  font-size: 2rem;
-  background: rgba(255,255,255,0.18);
-  border-radius: 50%;
+  /* Contiene l'icona vera dell'app (SVG inline, 28/07/2026) al posto della vecchia
+     emoji: niente sfondo tondo semitrasparente, che con un'icona gia' squadrata
+     creava due forme sovrapposte. Resta la leggera ombra per staccarla dal viola. */
   width: 52px;
   height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  filter: drop-shadow(0 0 4px rgba(255,255,255,0.5));
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
 }
+.logo svg { display: block; border-radius: 8px; }
 .by-line {
   font-size: 0.78rem;
   opacity: 0.7;

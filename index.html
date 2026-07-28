@@ -31,10 +31,24 @@
 
   <header class="site-header">
     <div class="header-inner">
-      <span class="logo">🗣️</span>
+      <!-- Icona dell'app (28/07/2026): la stessa che si vede sul desktop, nella
+           linguetta del browser e sul sito — una tesserina CAA col bordo tratteggiato
+           di chi la ritaglia. Prima qui c'era l'emoji 🗣️ e fuori un fumetto: due
+           segni diversi per la stessa app. In SVG inline resta nitida a ogni
+           dimensione e non aggiunge una richiesta di rete. -->
+      <span class="logo">
+        <svg viewBox="0 0 512 512" width="40" height="40" aria-hidden="true" focusable="false">
+          <rect x="74" y="74" width="364" height="364" rx="30" fill="#ffffff"/>
+          <rect x="74" y="74" width="364" height="364" rx="30" fill="none" stroke="#c4b5fd" stroke-width="14" stroke-dasharray="32 24"/>
+          <circle cx="256" cy="168" r="46" fill="#7c3aed"/>
+          <path d="M188 280c0-38 30-68 68-68s68 30 68 68z" fill="#7c3aed"/>
+          <line x1="108" y1="312" x2="404" y2="312" stroke="#e9d5ff" stroke-width="11"/>
+          <text x="256" y="404" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="104" font-weight="800" fill="#5b21b6" text-anchor="middle" letter-spacing="-1">CAA</text>
+        </svg>
+      </span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.45</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.46</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
