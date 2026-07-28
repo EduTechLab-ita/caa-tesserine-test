@@ -175,6 +175,19 @@ export function ensureGisLoaded() {
   return _gisPromise;
 }
 
+// Il permesso su Drive è stato davvero concesso? Google offre hasGrantedAllScopes,
+// ma la risposta contiene comunque l'elenco degli scope accordati: si controlla
+// quello come riserva, così la verifica regge anche se l'API cambia forma.
+const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+function _hasDriveScope(tokenResponse) {
+  try {
+    if (google?.accounts?.oauth2?.hasGrantedAllScopes) {
+      return google.accounts.oauth2.hasGrantedAllScopes(tokenResponse, DRIVE_FILE_SCOPE);
+    }
+  } catch(e) { /* si passa al controllo diretto qui sotto */ }
+  return typeof tokenResponse?.scope === 'string' && tokenResponse.scope.includes(DRIVE_FILE_SCOPE);
+}
+
 // ── Click su "Collega a Google Drive" ────────────────────────────
 export async function connectToDrive() {
   try {
@@ -195,6 +208,26 @@ export async function connectToDrive() {
     callback:  async (tokenResponse) => {
       if (tokenResponse.error) {
         showDrivePanel('error', 'Autorizzazione negata: ' + tokenResponse.error);
+        return;
+      }
+      // Permessi granulari di Google (visto dal vivo nel test del 28/07/2026): nella
+      // schermata di consenso il permesso su Drive ha una CASELLA DA SPUNTARE, e si
+      // può cliccare "Continua" senza selezionarla. In quel caso Google restituisce
+      // comunque un token valido, ma SENZA l'accesso a Drive: l'app si crederebbe
+      // collegata e fallirebbe ogni salvataggio, lasciando la collega davanti a
+      // un'app che "non funziona" senza spiegazione. Meglio accorgersene subito e
+      // dirle esattamente cosa fare.
+      if (!_hasDriveScope(tokenResponse)) {
+        driveState.enabled     = false;
+        driveState.accessToken = null;
+        driveState.tokenExpiry = 0;
+        saveDriveState();
+        updateDriveButton();
+        showDrivePanel('error',
+          'Manca il permesso di accesso a Google Drive. Nella schermata di Google, ' +
+          'accanto alla riga "…file di Google Drive specifici che usi con questa app", ' +
+          'c\'è una CASELLA da spuntare: va selezionata prima di premere Continua. ' +
+          'Senza quel permesso l\'app non può salvare i vocabolari. Clicca "Riprova".');
         return;
       }
       driveState.accessToken = tokenResponse.access_token;
@@ -231,6 +264,17 @@ function trySilentAuth(onReady, retries = 6) {
     scope:     DRIVE_SCOPE,
     prompt:    '',
     callback:  (tokenResponse) => {
+      // Stesso controllo del collegamento manuale: un token senza il permesso su
+      // Drive non vale come connessione (può capitare se il consenso è stato dato
+      // a metà, o revocato in parte dalle impostazioni dell'account Google).
+      if (tokenResponse.access_token && !_hasDriveScope(tokenResponse)) {
+        driveState.enabled     = false;
+        driveState.accessToken = null;
+        driveState.tokenExpiry = 0;
+        saveDriveState();
+        updateDriveButton();
+        return;
+      }
       if (tokenResponse.access_token) {
         driveState.accessToken = tokenResponse.access_token;
         driveState.tokenExpiry = Date.now() + (tokenResponse.expires_in * 1000);
