@@ -159,19 +159,20 @@ _refreshLocalWarning(); // stato iniziale: mostrato finché Drive non risponde
 
 loadDriveConfig(() => {
   // Drive connesso al caricamento pagina (token già valido o silent auth)
-  syncStudentListFromDrive();
+  // La verifica dei condivisi parte quando l'elenco alunni è stato ricostruito da
+  // Drive, non in parallelo: le voci che risultano eliminate devono poter sparire
+  // da un elenco già popolato, altrimenti il sync successivo le rimetterebbe.
+  syncStudentListFromDrive().finally(() => _verifySharedStudentsAtBoot());
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
-  _verifySharedStudentsAtBoot();
   _refreshLocalWarning();
 });
 
 // Drive connesso dopo login manuale (click sul pulsante) — es. Chromebook pulito
 document.addEventListener('caa-drive-connected', () => {
-  syncStudentListFromDrive();
+  syncStudentListFromDrive().finally(() => _verifySharedStudentsAtBoot());
   _resubscribeLive(getCurrentStudent());
   _refreshCurrentStudentFromDrive();
-  _verifySharedStudentsAtBoot();
   _refreshLocalWarning();
 });
 
@@ -378,16 +379,24 @@ async function _verifySharedStudentsAtBoot() {
   }
 }
 
+// FIX (28/07/2026, trovato nel test a due account — regressione da interazione tra
+// due modifiche di oggi, entrambe corrette prese da sole): qui c'era un filtro
+// `if (!getStudentsList().includes(name)) continue`, sensato finché l'elenco alunni
+// stava su disco ed era già pronto all'avvio. Dalla v5.40 l'elenco vive in memoria e
+// all'avvio è VUOTO — si popola da Drive subito dopo, in parallelo — quindi la
+// verifica girava su una lista vuota, saltava ogni nome e non controllava nulla.
+// Sintomo osservato: il vocabolario eliminato dal proprietario restava in elenco
+// nel browser della collega, esattamente il caso che questa funzione doveva chiudere.
+// Il filtro era solo un'ottimizzazione: _handleSharedDeleted è idempotente (rimuovere
+// un alunno che non c'è, o dati che non ci sono, non fa danno), quindi si toglie.
 async function _verifySharedStudents() {
   const current = getCurrentStudent();
   for (const name of getSharedStudentNames()) {
     if (name === current) continue;                    // già coperto dalla sottoscrizione live
-    if (!getStudentsList().includes(name)) continue;   // non più in elenco: niente da ripulire
     const code = await getShareCodeForStudent(name);
     if (!code) continue;
     const state = await checkSharedAlive(code);
     if (state !== 'deleted') continue;
-    if (!getStudentsList().includes(name)) continue;   // rimosso nel frattempo (es. push arrivato prima)
     await _handleSharedDeleted(name);
   }
 }
@@ -1579,6 +1588,20 @@ function initStudentSelector() {
         saveDictionary(dictionary);
         saveCustomImages(customImages);
         saveLabelsForStudent(name, customLabels);
+      } else if (token === _selectorLoadToken && !driveData &&
+                 (isEphemeralStudent(name) || isSharedStudent(name))) {
+        // Un vocabolario RICEVUTO che non restituisce dati può essere stato eliminato
+        // dal proprietario. Il valore vuoto NON è una prova — Firebase risponde così
+        // anche a un permesso negato o a un intoppo di token (lezione 22/07/2026) —
+        // quindi qui non si cancella niente sulla base del vuoto: lo si usa solo come
+        // INNESCO di una verifica affidabile, quella basata sull'evento di apertura
+        // della sottoscrizione. Serve come rete di sicurezza per il caso osservato nel
+        // test del 28/07: aprire un vocabolario già eliminato e non ricevere risposta.
+        const code = await getShareCodeForStudent(name);
+        if (code && (await checkSharedAlive(code)) === 'deleted') {
+          await _handleSharedDeleted(name);
+          return;
+        }
       }
     }
 
