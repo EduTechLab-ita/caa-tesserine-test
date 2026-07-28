@@ -484,15 +484,31 @@ document.addEventListener('visibilitychange', () => {
 // che l'utente sta guardando in questo momento. getShareCodeForStudent ritorna
 // null per un alunno non condiviso: in quel caso non si apre nessuna connessione.
 // (_liveUnsubscribe dichiarata in cima al file, vedi nota lì)
+// FIX (28/07/2026, trovato nel test a due account): va richiamata ANCHE dopo la
+// pubblicazione di una condivisione (makeShareReady). Chi crea un alunno e lo
+// condivide nella stessa sessione lo aveva selezionato quando ancora non esisteva
+// nessun codice: getShareCodeForStudent tornava null, la sottoscrizione non si
+// apriva, e il proprietario restava sordo agli aggiornamenti della collega fino al
+// primo cambio di alunno o reload. È lo stesso difetto chiuso il 27/07 dal lato del
+// ricevente (v5.36), qui dal lato di chi condivide.
+//
+// ⚠️ La callback di CANCELLAZIONE si passa SOLO per i vocabolari RICEVUTI. Su un
+// nodo Firebase che non esiste (ancora, o più) il primo evento è `data:null`: per
+// un ricevuto significa "il proprietario ha eliminato" ed è giusto ripulire, ma per
+// un alunno PROPRIO significherebbe solo "la condivisione non è attiva" — e
+// cancellargli l'alunno sarebbe un disastro. Il file su Drive resterebbe, quindi il
+// dato non si perde, ma l'alunno sparirebbe dall'elenco sotto gli occhi di chi lo ha
+// creato. Nel dubbio non si cancella (stesso fail-safe di canManageStudent).
 async function _resubscribeLive(name) {
   if (_liveUnsubscribe) { _liveUnsubscribe(); _liveUnsubscribe = null; }
   if (!name || !isDriveConnected()) return;
   const shareCode = await getShareCodeForStudent(name);
   if (!shareCode) return;
+  const ricevuto = isEphemeralStudent(name) || isSharedStudent(name);
   _liveUnsubscribe = subscribeSharedStudent(
     shareCode,
     _refreshCurrentStudentFromDrive,
-    () => _handleSharedDeleted(name),
+    ricevuto ? () => _handleSharedDeleted(name) : null,
   );
 }
 
@@ -622,6 +638,7 @@ window._copyShareCode   = async () => {
 
   // Pubblica lo snapshot corrente su Firebase, in background (non blocca l'azione sopra)
   makeShareReady(code, studentName, dictionary, customImages, customLabels)
+    .then(() => _resubscribeLive(studentName)) // vedi nota "il proprietario nasceva sordo"
     .catch(e => showDriveToast('⚠️ Errore pubblicazione condivisione: ' + e.message));
 };
 
@@ -672,6 +689,7 @@ window._emailShareCode = async () => {
 
   // Pubblica lo snapshot corrente su Firebase, in background (non blocca l'apertura sopra)
   makeShareReady(code, studentName, dictionary, customImages, customLabels)
+    .then(() => _resubscribeLive(studentName)) // vedi nota "il proprietario nasceva sordo"
     .catch(e => showDriveToast('⚠️ Errore pubblicazione condivisione: ' + e.message));
 };
 // Copia solo il codice (file ID)
