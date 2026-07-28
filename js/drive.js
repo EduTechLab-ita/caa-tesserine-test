@@ -147,8 +147,44 @@ function flashSaved() {
   _savedFlashTimer = setTimeout(() => { check.style.display = 'none'; }, 2200);
 }
 
+// ── Google Identity Services caricato solo quando serve (28/07/2026) ─────
+// Prima stava in un <script> nell'<head>: Google veniva contattato all'apertura
+// dell'app da CHIUNQUE, anche da chi non avrebbe mai collegato Drive, prima di
+// qualsiasi scelta dell'utente. Ora lo script si carica solo quando si manifesta
+// l'intenzione di usare Drive — cioè aprendo il pannello Drive.
+//
+// ⚠️ Il precaricamento all'apertura del PANNELLO non è un dettaglio: GIS apre un
+// popup OAuth, e i browser lo bloccano se non parte a ridosso del click. Se lo
+// caricassimo solo al click su "Collega", l'attesa dello script consumerebbe il
+// gesto dell'utente e il popup verrebbe bloccato (stessa trappola di mailto e
+// clipboard, lezione 18/07/2026). Caricandolo all'apertura del pannello, quando
+// si clicca "Collega" la libreria è già pronta e la chiamata resta sincrona.
+let _gisPromise = null;
+export function ensureGisLoaded() {
+  if (typeof google !== 'undefined' && google.accounts) return Promise.resolve();
+  if (_gisPromise) return _gisPromise;
+  _gisPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src   = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.defer = true;
+    s.onload  = () => resolve();
+    s.onerror = () => { _gisPromise = null; reject(new Error('GIS non raggiungibile')); };
+    document.head.appendChild(s);
+  });
+  return _gisPromise;
+}
+
 // ── Click su "Collega a Google Drive" ────────────────────────────
-export function connectToDrive() {
+export async function connectToDrive() {
+  try {
+    await ensureGisLoaded(); // di norma già risolta: precaricata all'apertura del pannello
+  } catch(e) {
+    showDrivePanel('error',
+      'Impossibile contattare Google per il collegamento. Controlla la connessione ' +
+      '(o il filtro di rete della scuola) e riprova.');
+    return;
+  }
   if (typeof google === 'undefined' || !google.accounts) {
     alert('Le librerie Google non sono ancora caricate. Riprova tra qualche secondo.');
     return;
@@ -181,6 +217,11 @@ export function connectToDrive() {
 // ── Rinnovo silenzioso del token ──────────────────────────────────
 function trySilentAuth(onReady, retries = 6) {
   if (typeof google === 'undefined' || !google.accounts) {
+    // Qui l'utente ha già collegato Drive in passato (loadDriveConfig arriva in questo
+    // ramo solo se driveState.enabled), quindi caricare GIS è legittimo e atteso: non
+    // stiamo contattando Google per chi non l'ha mai usato. Nessun popup di mezzo —
+    // il rinnovo è silenzioso (prompt:'') — quindi qui l'attesa non blocca nulla.
+    ensureGisLoaded().catch(() => {});
     if (retries > 0) setTimeout(() => trySilentAuth(onReady, retries - 1), 1500);
     else updateDriveButton('error');
     return;
@@ -1111,6 +1152,11 @@ async function updateDriveFile(fileId, content) {
 
 // ── UI: Modal Drive ───────────────────────────────────────────────
 export function openDriveModal() {
+  // Aprire questo pannello è il momento in cui l'utente manifesta l'intenzione di
+  // usare Drive: da qui in poi contattare Google è legittimo e atteso. Caricare la
+  // libreria ADESSO, e non al click su "Collega", è ciò che evita che il popup OAuth
+  // venga bloccato dal browser (vedi la nota su ensureGisLoaded).
+  ensureGisLoaded().catch(() => {}); // l'errore è già gestito da connectToDrive
   const panel = isDriveConnected() ? 'connected' : 'connect';
   if (panel === 'connected') _refreshConnectedPanel();
   showDrivePanel(panel);

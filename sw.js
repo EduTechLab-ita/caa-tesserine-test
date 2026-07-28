@@ -3,7 +3,7 @@
 //  ⚙️  Aggiorna CACHE_NAME ad ogni deploy per forzare il refresh
 // ══════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'caartella-v5.40';
+const CACHE_NAME = 'caartella-v5.41';
 
 const STATIC_ASSETS = [
   './',
@@ -20,7 +20,11 @@ const STATIC_ASSETS = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  // jsPDF viene caricato da CDN – non cachato qui (troppo grande)
+  // jsPDF ora è nostro (28/07/2026): niente più cdnjs.cloudflare.com, quindi nessun
+  // IP esposto a un terzo fuori UE e nessun CDN che i firewall scolastici possano
+  // bloccare. 356 KB nel precache è un prezzo onesto per avere la stampa PDF che
+  // funziona sempre, anche a rete filtrata.
+  './vendor/jspdf.umd.min.js',
 ];
 
 // ── Install: pre-cacha i file statici ─────────────────────────────

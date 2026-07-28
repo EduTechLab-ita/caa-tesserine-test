@@ -19,8 +19,13 @@
 
   <link rel="stylesheet" href="css/style.css" />
 
-  <!-- Google Identity Services (per OAuth2 Drive) -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- Google Identity Services NON è più caricato qui (28/07/2026).
+       Stando nell'<head> veniva scaricato da accounts.google.com all'apertura
+       dell'app da chiunque, anche da chi non avrebbe mai collegato Drive: Google
+       riceveva l'IP dell'utente prima di qualunque sua scelta. Ora lo carica
+       drive.js (ensureGisLoaded) quando si apre il pannello Drive, cioè quando
+       l'intenzione di usarlo c'è davvero. -->
+
 </head>
 <body>
 
@@ -29,7 +34,7 @@
       <span class="logo">🗣️</span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.40</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.41</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -570,8 +575,14 @@
     &nbsp;|&nbsp; D.Lgs. 196/2003 – Trattamento dati personali
   </footer>
 
-  <!-- jsPDF (client-side PDF, nessun backend necessario) — SRI rimosso intenzionalmente -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- jsPDF (client-side PDF, nessun backend necessario).
+       PORTATO IN LOCALE il 28/07/2026: prima arrivava da cdnjs.cloudflare.com, il che
+       significava esporre l'indirizzo IP di ogni utente a un terzo fuori UE ad ogni
+       apertura dell'app, per un file che possiamo semplicemente tenere noi. Chiude
+       insieme il punto normativo e quello pratico dei firewall scolastici, che spesso
+       bloccano i CDN esterni (regola "librerie JS sempre locali" dell'Anima).
+       Versione 2.5.1, la stessa che veniva servita dal CDN. -->
+  <script src="./vendor/jspdf.umd.min.js"></script>
 
   <!-- App (ES modules — richiede server HTTP, non funziona con file://) -->
   <script type="module" src="js/app.js"></script>
