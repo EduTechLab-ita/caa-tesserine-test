@@ -932,122 +932,69 @@ async function handleGenerate() {
     return;
   }
 
-  btnGenerate.disabled = true;
-  if (!autoRegen) secPreview.classList.add('hidden');
   _lastSource = 'text';
-  tiles    = [];
   lemmaLog = {};
+  const allWords = phrases.flat();
+  const jobs = [];
+  phrases.forEach(phrase => phrase.forEach((word, wi) => jobs.push({
+    word, prevWord: wi > 0 ? phrase[wi - 1] : undefined, phraseEnd: wi === phrase.length - 1,
+  })));
 
+  const genLabel = btnGenerate.innerHTML;
+  const openBook = $('btn-open-book');
+  btnGenerate.disabled = true;
+  openBook.disabled = true;   // niente libretto mezzo pronto mentre si cerca
+  if (!autoRegen) secPreview.classList.add('hidden');
   let ok = 0, fail = 0;
-  const allWords  = phrases.flat();
-  let   globalIdx = 0;
-
-  // ── Per ogni frase, per ogni parola: cerca nel dizionario o chiama ARASAAC ───
-  for (let pi = 0; pi < phrases.length; pi++) {
-    const phrase = phrases[pi];
-    for (let wi = 0; wi < phrase.length; wi++) {
-      const word          = phrase[wi];
-      const isLastOfPhrase = wi === phrase.length - 1;
-      showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) Cerco pittogramma per: ${word}…`);
-
-      // "ha letto" → leggere lo decide la parola prima: non si legge né si scrive nel
-      // vocabolario, che ha un pittogramma per parola ("vado a letto" resta il mobile).
-      const prevWord = wi > 0 ? phrase[wi - 1] : undefined;
-      const byContext = !!contextParticiple(word, prevWord);
-      const savedId = byContext ? null : lookupWord(dictionary, word);
-      let id    = savedId;
-      let alts  = [];
-      let lemma = null;
-      // Segno grammaticale: qui viene gratis dalle ricerche già fatte; per le parole
-      // già nel vocabolario lo calcola ensureAutoMarkers, solo se un interruttore è acceso.
-      let autoMarker = null;
-      let markerDone = !savedId;
-
-      if (!savedId) {
-        try {
-          // 1. Prova PRIMA i candidati all'infinito (verbi coniugati → infinito)
-          const candidates = getCandidates(word, prevWord);
-          for (const { candidate, tense } of candidates) {
-            showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) "${word}" → provo: ${candidate}…`);
-            try {
-              const candidateAlts = await searchPictograms(candidate);
-              if (candidateAlts.length > 0) {
-                alts  = candidateAlts;
-                lemma = candidate;
-                lemmaLog[word] = candidate;
-                autoMarker = tense;
-                break;
-              }
-            } catch { /* prossimo candidato */ }
-          }
-
-          // 2. Se nessun infinito trovato, prova la parola originale
-          if (alts.length === 0) {
-            alts = await searchPictograms(word);
-            if (isPluralForm(word, alts)) autoMarker = 'plurale';
-          }
-          if (!byContext) _markerCache.set(word, autoMarker);
-
-          if (alts.length > 0) {
-            id = alts[0].id;
-            if (!byContext) {
-              dictionary = rememberWord(dictionary, word, id);
-              scheduleDriveSync();
-            }
-          }
-
-        } catch (e) {
-          console.warn('[app] Errore ARASAAC per', word, e.message);
-        }
-      } else {
-        searchPictograms(word)
-          .then(a => {
-            const t = tiles.find(t => t.word === word);
-            if (t && a.length > 0) t.alts = a;
-          })
-          .catch(() => {});
+  try {
+    // ── 6 parole alla volta (v5.58): prima si cercavano una dopo l'altra, e ogni attesa
+    // si sommava (35 tessere: 11 s). Risultati e ordine restano identici: ogni parola
+    // finisce al suo posto in `results`, e le tessere nuove sostituiscono le vecchie
+    // tutte insieme solo alla fine.
+    const results = new Array(jobs.length);
+    let next = 0, done = 0;
+    const progress = () => {
+      btnGenerate.textContent = `⏳ Preparo le tessere… ${done} di ${jobs.length}`;
+      showStatus(`⏳ Cerco i pittogrammi… ${done} di ${jobs.length}`);
+    };
+    progress();
+    await Promise.all(Array.from({ length: Math.min(6, jobs.length) }, async () => {
+      while (next < jobs.length) {
+        const i = next++;
+        results[i] = await _resolveWord(jobs[i]);
+        done++;
+        progress();
       }
+    }));
+    const newTiles = results;
+    newTiles.forEach(t => {
+      t.id ? ok++ : fail++;
+      if (t.lemma && !(t.word in lemmaLog)) lemmaLog[t.word] = t.lemma;
+    });
 
-      id ? ok++ : fail++;
-
-      const customDataURL = customImages[word];
-      tiles.push({
-        word,
-        id,
-        imageUrl:  null,             // assegnato sotto da tileImageUrl, dopo i segni grammaticali
-        dataURL:   customDataURL || null,
-        alts,
-        lemma,
-        autoMarker,
-        _markerDone: markerDone,
-        afterAux:  wi > 0 && AUSILIARI.has(phrase[wi - 1]),
-        phraseEnd: isLastOfPhrase,   // true = ultima parola di questa frase
-      });
-      globalIdx++;
+    if (chkMarkPlural.checked || chkMarkTense.checked) {
+      showStatus('⏳ Cerco plurali e tempi dei verbi…');
+      await ensureAutoMarkers(newTiles);
     }
+    _applyAuxPast(newTiles);
+    newTiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
+    tiles = newTiles;
+
+    currentOptions = {
+      cols:        parseInt(selCols.value),
+      rows:        parseInt(selRows.value),
+      tileSize:    parseInt(selSize.value),
+      orientation: selOrient.value,
+    };
+    renderPages();
+    // Le immagini per il PDF si scaricano in sottofondo: il libretto le mostra mentre
+    // arrivano, e la stampa riprova da sola quelle che mancassero ancora.
+    _prefetchTileImages();
+  } finally {
+    btnGenerate.innerHTML = genLabel;
+    btnGenerate.disabled = false;
+    openBook.disabled = false;
   }
-
-  if (chkMarkPlural.checked || chkMarkTense.checked) {
-    showStatus('⏳ Cerco plurali e tempi dei verbi…');
-    await ensureAutoMarkers(tiles);
-  }
-  _applyAuxPast(tiles);
-  tiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
-
-  // ── Pre-scarica le immagini come dataURL per jsPDF ───────────
-  showStatus(`⏳ Scarico immagini per la stampa PDF (${ok} pittogrammi)…`);
-
-  await _prefetchTileImages();
-
-  // ── Leggi opzioni ────────────────────────────────────────────
-  currentOptions = {
-    cols:        parseInt(selCols.value),
-    rows:        parseInt(selRows.value),
-    tileSize:    parseInt(selSize.value),
-    orientation: selOrient.value,
-  };
-
-  renderPages();
 
   // ── Componi messaggio di riepilogo ────────────────────────────
   const lemmaEntries = Object.entries(lemmaLog);
@@ -1064,17 +1011,74 @@ async function handleGenerate() {
   if (markerParts.length > 0) msg += `\n🔤 Segni grammaticali: ${markerParts.join(', ')}`;
 
   showStatus(msg, 'success');
-  btnGenerate.disabled = false;
   if (!autoRegen) {
     secPreview.scrollIntoView({ block: 'start' });   // chiudendo il libretto si ritrova la barra
     book.open();
   }
 }
 
+// Una parola → la sua tessera: dal vocabolario se c'è, altrimenti da ARASAAC
+// (prima l'infinito, poi la parola così com'è). Stessa logica di prima della v5.58,
+// solo estratta per poter cercare più parole insieme.
+async function _resolveWord({ word, prevWord, phraseEnd }) {
+  // "ha letto" → leggere lo decide la parola prima: non si legge né si scrive nel
+  // vocabolario, che ha un pittogramma per parola ("vado a letto" resta il mobile).
+  const byContext = !!contextParticiple(word, prevWord);
+  const savedId = byContext ? null : lookupWord(dictionary, word);
+  let id = savedId, alts = [], lemma = null;
+  // Segno grammaticale: qui viene gratis dalle ricerche già fatte; per le parole
+  // già nel vocabolario lo calcola ensureAutoMarkers, solo se un interruttore è acceso.
+  let autoMarker = null;
+
+  if (!savedId) {
+    try {
+      for (const { candidate, tense } of getCandidates(word, prevWord)) {
+        try {
+          const candidateAlts = await searchPictograms(candidate);
+          if (candidateAlts.length > 0) {
+            alts = candidateAlts; lemma = candidate; autoMarker = tense;
+            break;
+          }
+        } catch { /* prossimo candidato */ }
+      }
+      if (alts.length === 0) {
+        alts = await searchPictograms(word);
+        if (isPluralForm(word, alts)) autoMarker = 'plurale';
+      }
+      if (!byContext) _markerCache.set(word, autoMarker);
+      if (alts.length > 0) {
+        id = alts[0].id;
+        if (!byContext) {
+          dictionary = rememberWord(dictionary, word, id);
+          scheduleDriveSync();
+        }
+      }
+    } catch (e) {
+      console.warn('[app] Errore ARASAAC per', word, e.message);
+    }
+  }
+  // Per le parole già nel vocabolario le alternative non si cercano più qui: le cerca
+  // la finestra della tessera quando la si apre (prima: una richiesta in più a parola).
+
+  return {
+    word,
+    id,
+    imageUrl:  null,             // assegnato dopo da tileImageUrl, dopo i segni grammaticali
+    dataURL:   customImages[word] || null,
+    alts,
+    lemma,
+    autoMarker,
+    _markerDone: !savedId,
+    afterAux:  !!prevWord && AUSILIARI.has(prevWord),
+    phraseEnd,                   // true = ultima parola di questa frase
+  };
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  STAMPA VOCABOLARIO COMPLETO
 // ══════════════════════════════════════════════════════════════════
 async function handlePrintVocab() {
+  if (btnGenerate.disabled) { showStatus('⏳ Attendi: sto ancora preparando le tessere della frase.'); return; }
   const allWords = new Set([
     ...Object.keys(dictionary),
     ...Object.keys(customImages),

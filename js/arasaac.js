@@ -61,10 +61,25 @@ export function isPluralForm(word, results) {
  * @returns {Promise<Array<{id:number, keyword:string, imageUrl:string}>>}
  * @throws {Error} se la rete non risponde o ARASAAC ritorna errore HTTP
  */
-export async function searchPictograms(word) {
+// Stessa parola, stessa risposta: in una sessione ogni ricerca si fa una volta sola
+// («con», «la», «il» ripetute, segni, finestra della tessera). Un errore non si
+// conserva, così al tentativo dopo si riprova davvero.
+const _searchCache = new Map();
+export function searchPictograms(word) {
+  const key = word.toLowerCase();
+  if (!_searchCache.has(key)) {
+    _searchCache.set(key, _search(key).catch(e => { _searchCache.delete(key); throw e; }));
+  }
+  return _searchCache.get(key);
+}
+
+async function _search(word) {
   const url = `${API_BASE}/pictograms/${LANG}/search/${encodeURIComponent(word.toLowerCase())}`;
 
   const resp = await fetch(url);
+  // ARASAAC risponde 404 (con corpo []) quando la parola non ha pittogrammi: non è un
+  // guasto, è «nessun risultato», e come tale si può ricordare.
+  if (resp.status === 404) return [];
   if (!resp.ok) throw new Error(`ARASAAC HTTP ${resp.status} per "${word}"`);
 
   const data = await resp.json();

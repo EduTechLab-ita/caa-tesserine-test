@@ -19,7 +19,7 @@ export const GUIDA = [
     <p>CAArtella trasforma una frase in tessere di pittogrammi da stampare, ritagliare e incollare sul quaderno. Tre passi:</p>
     <ol class="g-steps">
       <li><b>Scrivi la frase</b> nel riquadro «Inserisci il testo». Un a capo = una frase nuova, che sul foglio parte da una riga nuova.</li>
-      <li>Premi <b>«🔍 Genera Pittogrammi CAA»</b>: l'app cerca un pittogramma ARASAAC per ogni parola e apre il <a href="#" data-gvai="libretto">libretto delle tessere</a>.</li>
+      <li>Premi <b>«🔍 Genera Pittogrammi CAA»</b>: l'app cerca un pittogramma ARASAAC per ogni parola e apre il <a href="#" data-gvai="libretto">libretto delle tessere</a>. Mentre cerca, il pulsante mostra a che punto è («⏳ Preparo le tessere… 12 di 23»): il libretto si apre da solo quando è pronto.</li>
       <li>Nel libretto premi <b>«🖨️ Stampa»</b>: vedi il foglio A4 com'è davvero e lo mandi alla stampante.</li>
     </ol>
     ${img('inizio.jpg', 'La parte alta di CAArtella: intestazione, avviso Drive e selettore alunno', 'In alto: l\'avviso arancione ricorda che senza Google Drive nulla viene salvato. Sotto, il selettore dell\'alunno.')}
