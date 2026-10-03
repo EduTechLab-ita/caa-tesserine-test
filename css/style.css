@@ -177,7 +177,7 @@ select {
 }
 
 /* ── VOCABOLARIO DELL'ALUNNO (v5.50: spostato qui da sotto "Genera") ── */
-.vocab-btn { margin-top: 0.6rem; }
+.vocab-btn { width: fit-content; margin: 0.7rem auto 0.2rem; }
 
 /* ── ANTEPRIMA DI STAMPA (v5.50) ─────────────────────────────── */
 .modal.print-modal {

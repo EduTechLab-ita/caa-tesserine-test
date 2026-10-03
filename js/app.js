@@ -152,24 +152,15 @@ $('info-overlay').addEventListener('click', e => { if (e.target === $('info-over
 //  tile.autoMarker = segno riconosciuto in automatico · _markerOverrides = scelta
 //  fatta a mano dalla maestra per una parola, valida finché la pagina resta aperta.
 // ══════════════════════════════════════════════════════════════════
-// Solo due sì/no di preferenza, nessun dato di alunni: possono restare sul computer.
-const MARKER_PREFS_KEY = 'caa_marker_prefs_v1';
 const _markerOverrides = new Map();   // PAROLA → 'plurale' | 'passato' | 'futuro' | null
 const _markerCache     = new Map();   // PAROLA → segno automatico già calcolato
 const MARKER_LABEL = { plurale: 'plurale (+)', passato: 'passato (←)', futuro: 'futuro (→)' };
 
-try {
-  const p = JSON.parse(localStorage.getItem(MARKER_PREFS_KEY) || '{}');
-  chkMarkPlural.checked = !!p.plural;
-  chkMarkTense.checked  = !!p.tense;
-} catch { /* preferenza illeggibile: restano spenti */ }
-
-function _saveMarkerPrefs() {
-  try {
-    localStorage.setItem(MARKER_PREFS_KEY,
-      JSON.stringify({ plural: chkMarkPlural.checked, tense: chkMarkTense.checked }));
-  } catch { /* navigazione privata: la scelta vale solo per questa visita */ }
-}
+// Le tre caselle della frase ripartono SPENTE a ogni apertura (deciso con Fabio,
+// v5.50): su un PC condiviso la scelta di una collega non deve restare accesa per la
+// successiva. Esplicito perché il browser, ricaricando, può ripristinare le spunte.
+chkStop.checked = chkMarkPlural.checked = chkMarkTense.checked = false;
+try { localStorage.removeItem('caa_marker_prefs_v1'); } catch { /* residuo della v5.49 */ }
 
 function effectiveMarker(tile) {
   if (_markerOverrides.has(tile.word)) return _markerOverrides.get(tile.word);
@@ -262,7 +253,6 @@ function _markerSummary() {
 }
 
 async function _onMarkerToggle() {
-  _saveMarkerPrefs();
   if (tiles.length === 0) return;
   if ((chkMarkPlural.checked || chkMarkTense.checked) && tiles.some(t => t.id && !t._markerDone)) {
     showStatus('⏳ Cerco plurali e tempi dei verbi…');
@@ -2174,7 +2164,7 @@ function _updateRemoveBtn(studentName) {
   // in modalità "uso generico" nascondiamo il pulsante (nessun nome da mostrare).
   if (btnPrintVocab) {
     if (studentName) {
-      btnPrintVocab.style.display = 'inline-block';
+      btnPrintVocab.style.display = 'flex';   // flex + margin auto (CSS) = centrato
       btnPrintVocab.textContent = `📖 Mostra vocabolario completo di "${studentName}"`;
     } else {
       btnPrintVocab.style.display = 'none';
