@@ -961,7 +961,7 @@ async function handleGenerate() {
       if (!savedId) {
         try {
           // 1. Prova PRIMA i candidati all'infinito (verbi coniugati → infinito)
-          const candidates = getCandidates(word);
+          const candidates = getCandidates(word, wi > 0 ? phrase[wi - 1] : undefined);
           for (const { candidate, tense } of candidates) {
             showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) "${word}" → provo: ${candidate}…`);
             try {

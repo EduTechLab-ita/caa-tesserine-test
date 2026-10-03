@@ -139,15 +139,30 @@ const VOCI_IRREGOLARI_PASSATO = {
 // conosce perché romperebbe verbi frequenti ("legge" → la legge, "balla" → di fieno).
 const NON_VERBI = new Set(['letto', 'letti']);
 
+// Participi che sono anche nomi comuni: da soli restano nomi ("il letto", "il fatto"),
+// ma dopo un ausiliare sono verbi ("ha letto", "ho fatto", "è stato").
+const PARTICIPI_NOMI = {
+  lett: 'leggere', fatt: 'fare', stat: 'essere', dett: 'dire', cors: 'correre',
+  ris: 'ridere', dipint: 'dipingere', mess: 'mettere',
+};
+const AUSILIARI = new Set(['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno', 'sono', 'sei', 'è',
+  'siamo', 'siete', 'ero', 'eri', 'era', 'eravamo', 'eravate', 'erano', 'avevo', 'aveva', 'avevano']);
+
 /**
  * Dato un verbo flesso, genera i candidati all'infinito in ordine di priorità.
  * NON verifica se il candidato esiste su ARASAAC: lo fa la funzione chiamante.
  *
- * @param {string} word  - parola in UPPERCASE
+ * @param {string} word      - parola in UPPERCASE
+ * @param {string} [prevWord] - parola precedente nella frase, se nota
  * @returns {Array<{candidate:string, tense:('passato'|'futuro'|null)}>}
  */
-export function getCandidates(word) {
+export function getCandidates(word, prevWord) {
   const lower = word.toLowerCase();
+  if (prevWord && AUSILIARI.has(prevWord.toLowerCase())) {
+    for (const [stem, inf] of Object.entries(PARTICIPI_NOMI)) {
+      if (['o', 'a', 'i', 'e'].some(d => lower === stem + d)) return [{ candidate: inf, tense: 'passato' }];
+    }
+  }
   if (NON_VERBI.has(lower)) return [];
   const seen  = new Set();
   const out   = [];
