@@ -149,6 +149,20 @@ const AUSILIARI = new Set(['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno', 'sono
   'siamo', 'siete', 'ero', 'eri', 'era', 'eravamo', 'eravate', 'erano', 'avevo', 'aveva', 'avevano']);
 
 /**
+ * Infinito di un participio-nome usato come verbo ("ha letto" → leggere), o null.
+ * Quando decide il contesto la scelta non va salvata nel vocabolario: "letto" da
+ * solo resta il mobile, e il vocabolario ha un solo pittogramma per parola.
+ */
+export function contextParticiple(word, prevWord) {
+  if (!prevWord || !AUSILIARI.has(prevWord.toLowerCase())) return null;
+  const lower = word.toLowerCase();
+  for (const [stem, inf] of Object.entries(PARTICIPI_NOMI)) {
+    if (['o', 'a', 'i', 'e'].some(d => lower === stem + d)) return inf;
+  }
+  return null;
+}
+
+/**
  * Dato un verbo flesso, genera i candidati all'infinito in ordine di priorità.
  * NON verifica se il candidato esiste su ARASAAC: lo fa la funzione chiamante.
  *
@@ -158,11 +172,8 @@ const AUSILIARI = new Set(['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno', 'sono
  */
 export function getCandidates(word, prevWord) {
   const lower = word.toLowerCase();
-  if (prevWord && AUSILIARI.has(prevWord.toLowerCase())) {
-    for (const [stem, inf] of Object.entries(PARTICIPI_NOMI)) {
-      if (['o', 'a', 'i', 'e'].some(d => lower === stem + d)) return [{ candidate: inf, tense: 'passato' }];
-    }
-  }
+  const ctx = contextParticiple(word, prevWord);
+  if (ctx) return [{ candidate: ctx, tense: 'passato' }];
   if (NON_VERBI.has(lower)) return [];
   const seen  = new Set();
   const out   = [];

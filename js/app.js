@@ -49,7 +49,7 @@ import { parseText, parseTextToPhrases }                from './parser.js';
 import { searchPictograms, getPictogramUrl,
          fetchImageAsDataURL, getMarkedPictogramUrl,
          isPluralForm }                                 from './arasaac.js';
-import { getCandidates }                                from './lemmatizer.js';
+import { getCandidates, contextParticiple }             from './lemmatizer.js';
 import {
   addCustomImage, removeCustomImage,
   fileToDataURL, exportAll, importAll, CUSTOM_PREFIX,
@@ -219,7 +219,8 @@ async function ensureAutoMarkers(tilesArr) {
     while (next < todo.length) {
       const w = todo[next++];
       const m = await _detectMarker(w);
-      tilesArr.forEach(t => { if (t.word === w) { t.autoMarker = m; t._markerDone = true; } });
+      // Solo le tessere ancora da decidere: "ha letto" ha già il segno dal contesto.
+      tilesArr.forEach(t => { if (t.word === w && !t._markerDone) { t.autoMarker = m; t._markerDone = true; } });
     }
   };
   await Promise.all(Array.from({ length: Math.min(6, todo.length) }, worker));
@@ -949,7 +950,11 @@ async function handleGenerate() {
       const isLastOfPhrase = wi === phrase.length - 1;
       showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) Cerco pittogramma per: ${word}…`);
 
-      const savedId = lookupWord(dictionary, word);
+      // "ha letto" → leggere lo decide la parola prima: non si legge né si scrive nel
+      // vocabolario, che ha un pittogramma per parola ("vado a letto" resta il mobile).
+      const prevWord = wi > 0 ? phrase[wi - 1] : undefined;
+      const byContext = !!contextParticiple(word, prevWord);
+      const savedId = byContext ? null : lookupWord(dictionary, word);
       let id    = savedId;
       let alts  = [];
       let lemma = null;
@@ -961,7 +966,7 @@ async function handleGenerate() {
       if (!savedId) {
         try {
           // 1. Prova PRIMA i candidati all'infinito (verbi coniugati → infinito)
-          const candidates = getCandidates(word, wi > 0 ? phrase[wi - 1] : undefined);
+          const candidates = getCandidates(word, prevWord);
           for (const { candidate, tense } of candidates) {
             showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) "${word}" → provo: ${candidate}…`);
             try {
@@ -981,12 +986,14 @@ async function handleGenerate() {
             alts = await searchPictograms(word);
             if (isPluralForm(word, alts)) autoMarker = 'plurale';
           }
-          _markerCache.set(word, autoMarker);
+          if (!byContext) _markerCache.set(word, autoMarker);
 
           if (alts.length > 0) {
-            id         = alts[0].id;
-            dictionary = rememberWord(dictionary, word, id);
-            scheduleDriveSync();
+            id = alts[0].id;
+            if (!byContext) {
+              dictionary = rememberWord(dictionary, word, id);
+              scheduleDriveSync();
+            }
           }
 
         } catch (e) {
