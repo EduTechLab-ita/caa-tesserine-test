@@ -586,7 +586,7 @@ footer a:hover { text-decoration: underline; }
 }
 .btn-info:hover { background: rgba(255,255,255,0.32); }
 /* Il pulsante della guida è un «?» dritto, non la «i» in corsivo di prima */
-#btn-info { font-style: normal; font-family: system-ui, 'Segoe UI', sans-serif; font-weight: 800; }
+#btn-info { font-style: normal; font-family: system-ui, 'Segoe UI', sans-serif; font-weight: 800; font-size: 1.5rem; }
 
 /* Due pulsanti tondi adiacenti nell'header (🔔 avvisi + ⓘ info): solo il primo
    deve spingersi a destra con margin-left:auto, altrimenti si allontanano tra loro. */
