@@ -50,6 +50,7 @@ import { searchPictograms, getPictogramUrl,
          fetchImageAsDataURL, getMarkedPictogramUrl,
          isPluralForm }                                 from './arasaac.js';
 import { getCandidates, contextParticiple }             from './lemmatizer.js';
+import { initGuida }                                    from './guida.js';
 import {
   addCustomImage, removeCustomImage,
   fileToDataURL, exportAll, importAll, CUSTOM_PREFIX,
@@ -103,7 +104,7 @@ let currentOptions = { cols: 4, rows: 5, tileSize: 45, orientation: 'portrait' }
 
 // ── Riferimenti DOM ────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const openInfo  = () => $('info-overlay').classList.remove('hidden');
+const openInfo  = initGuida($('app-version')?.textContent || '');
 const closeInfo = () => $('info-overlay').classList.add('hidden');
 
 const txtInput       = $('txt-input');
@@ -141,9 +142,8 @@ modalOverlay.addEventListener('click',   e => { if (e.target === modalOverlay) c
 document.addEventListener('keydown',     e => { if (e.key === 'Escape') { closeModal(); closeInfo(); } });
 
 // Info panel
-$('btn-info').addEventListener('click',   openInfo);
+$('btn-info').addEventListener('click',   () => openInfo());
 $('info-close').addEventListener('click', closeInfo);
-$('info-close-bottom').addEventListener('click', closeInfo);
 $('info-overlay').addEventListener('click', e => { if (e.target === $('info-overlay')) closeInfo(); });
 
 // ══════════════════════════════════════════════════════════════════

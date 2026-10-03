@@ -48,7 +48,7 @@
       </span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.53</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.54</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -121,234 +121,29 @@
        sempre visibile indipendentemente dallo scroll, si nasconde da solo. -->
   <div id="status-banner" class="status-banner no-print"></div>
 
-  <!-- ── PANNELLO INFO ─────────────────────────────────────────────── -->
+  <!-- ── GUIDA ILLUSTRATA A CAPITOLI (v5.54) ─────────────────────────
+       Contenuti e immagini in js/guida.js e guida/. Si apre dal pulsante «i»
+       e da ogni «?» viola (data-guida="capitolo"). -->
   <div id="info-overlay" class="modal-overlay hidden">
-    <div class="modal info-modal">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-        <h3 style="margin:0;">ℹ️ Come si usa — CAArtella</h3>
-        <button id="info-close" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;line-height:1;" title="Chiudi">✕</button>
-      </div>
-
-      <div class="info-section">
-        <h4>📝 1. Inserisci il testo</h4>
-        <p>Scrivi una frase o un breve racconto nel campo di testo. Puoi usare maiuscole o minuscole.
-        Es: <em>"Il bambino mangia la mela rossa"</em></p>
-      </div>
-
-      <div class="info-section">
-        <h4>⚙️ 2. Scegli le opzioni</h4>
-        <ul>
-          <li><b>Colonne / Righe</b> — quante tessere per pagina (es. 4×5 = 20 tessere; fino a 12×12 per tessere molto piccole da ritagliare)</li>
-          <li><b>Tessera</b> — la misura stampata, da 1 cm (micro, lavoretti) a 7 cm (grandi); il testo si adatta alla misura. Se con le colonne e le righe scelte non ci sta, l'anteprima di stampa te lo dice</li>
-          <li><b>Orientamento</b> — Verticale (A4 classico) o Orizzontale (più colonne sullo stesso foglio)</li>
-        </ul>
-        <p>Nel riquadro viola <b>«Come trasformare la frase»</b>:</p>
-        <ul>
-          <li><b>Rimuovi articoli, pronomi e preposizioni</b> — tiene solo le parole piene (toglie IL, LA, UNO, DI, A…). Spento di partenza. Se lo cambi dopo aver generato, le tessere si rigenerano da sole.</li>
-          <li><b>Segni sui pittogrammi</b> — il <b>+</b> del plurale e le frecce <b>←</b> passato / <b>→</b> futuro. Spenti di partenza: vedi il punto 5.</li>
-        </ul>
-      </div>
-
-      <div class="info-section">
-        <h4>🔍 3. Genera i pittogrammi</h4>
-        <p>Clicca <b>"Genera Pittogrammi CAA"</b>. L'app cerca automaticamente il pittogramma ARASAAC per ogni parola
-        e porta la pagina sull'anteprima, divisa in pagine A4.</p>
-        <p>⏳ La prima volta per ogni parola ci vuole qualche secondo (richiesta all'API ARASAAC).</p>
-      </div>
-
-      <div class="info-section">
-        <h4>🔤 4. Forme verbali automatiche</h4>
-        <p>ARASAAC archivia i verbi all'infinito. Se scrivi <em>"mangia"</em>, l'app cerca automaticamente
-        <em>"mangiare"</em> e usa quel pittogramma. Le tessere modificate mostrano un badge verde <b>≈</b>.</p>
-        <p>Riconosce presente, imperfetto (<em>mangiava</em>), participio (<em>mangiato</em>), gerundio,
-        futuro (<em>mangerà</em>, <em>giocheranno</em>) e i verbi irregolari più usati a scuola:
-        <em>ho, ha, hanno → avere</em> · <em>è, sono, era → essere</em> · <em>va, fa, sta, può, deve, beve, dice</em>
-        · <em>bevuto, preso, visto, andrà, farà, sarà</em>…</p>
-        <p>"Sei" resta il numero 6: se nella frase è il verbo essere, clicca la tessera e scegli il pittogramma giusto.</p>
-        <p>Il riepilogo in fondo alla pagina mostra tutte le trasformazioni applicate.</p>
-      </div>
-
-      <div class="info-section">
-        <h4>➕ 5. Segni grammaticali: plurale, passato, futuro</h4>
-        <p>Nel riquadro viola ci sono due caselle «Segni sui pittogrammi». Quando le spunti, ARASAAC disegna un piccolo segno
-        nell'angolo del pittogramma — lo stesso sistema usato dai programmi di CAA professionali:</p>
-        <ul>
-          <li><b>+ Plurale</b> — <em>alberi, case, cani, uova</em> mostrano il <b>+</b> in alto a destra.
-          Il plurale lo riconosce il dizionario di ARASAAC, quindi funziona anche per i femminili e
-          per gli irregolari. Le parole uguali al singolare (<em>città, re, caffè</em>) restano senza segno.</li>
-          <li><b>← → Passato e futuro</b> — <em>mangiava, ha mangiato, sono andate, ho bevuto</em> mostrano la freccia
-          <b>←</b> in alto a sinistra; <em>mangerà, andremo</em> la freccia <b>→</b> in alto a destra.
-          Il presente resta senza segno.</li>
-        </ul>
-        <p>Puoi accenderle e spegnerle anche <b>dopo</b> aver generato: le tessere si aggiornano subito,
-        anche nel PDF. A ogni apertura dell'app ripartono spente, così su un PC condiviso nessuno
-        eredita le scelte di chi l'ha usato prima.</p>
-        <p><b>Il segno è sbagliato o manca?</b> Clicca sulla tessera: nella finestra trovi
-        <b>"Segno grammaticale sul pittogramma"</b> con i pulsanti <em>Automatico · Nessuno · + Plurale ·
-        ← Passato · → Futuro</em>. La scelta vale per quella parola finché la pagina resta aperta.</p>
-        <p>💡 Perché spenti di partenza? Per alcuni bambini il segno in più aiuta a capire, per altri
-        è solo rumore: decide l'insegnante, alunno per alunno. Sulle immagini personalizzate il segno
-        non si mette.</p>
-      </div>
-
-      <div class="info-section">
-        <h4>↔️ 6. Cambia un pittogramma</h4>
-        <p>Clicca su qualsiasi tessera per vedere pittogrammi alternativi. Seleziona quello più adatto:
-        la tua scelta viene salvata automaticamente e usata ogni volta che scrivi quella parola.</p>
-      </div>
-
-      <div class="info-section">
-        <h4>🖨️ 7. Stampa</h4>
-        <p>Clicca <b>"🖨️ Stampa"</b>: si apre l'<b>anteprima di stampa</b> con il foglio A4 esattamente come
-        uscirà. A sinistra puoi cambiare colonne, righe, misura della tessera e orientamento e vedere
-        subito il risultato. Poi:</p>
-        <ul>
-          <li><b>🖨️ Stampa</b> — manda il foglio direttamente alla stampante;</li>
-          <li><b>⬇ Scarica PDF</b> — salva il file per stamparlo dopo o mandarlo a qualcuno.</li>
-        </ul>
-        <p>Su iPad e telefono l'anteprima del PDF non si apre dentro la pagina: lì usa «Scarica PDF»
-        e stampa dall'app che apre il file.</p>
-        <p>Stampa, ritaglia lungo i bordi e incolla sul quaderno!</p>
-      </div>
-
-      <div class="info-section">
-        <h4>👤 8. Selettore alunno</h4>
-        <p>Usa il selettore in cima alla pagina per gestire vocabolari separati per ogni alunno:</p>
-        <ul>
-          <li><b>Senza nome</b> — dizionario generico, non legato ad alcun alunno</li>
-          <li><b>+ Nuovo</b> — crea un alunno: il suo dizionario è separato dagli altri</li>
-          <li>Cambiando alunno si carica automaticamente il suo vocabolario</li>
-          <li><b>📖 Mostra vocabolario completo</b> — sotto il nome: mette in anteprima tutte le parole dell'alunno, pronte da stampare</li>
-        </ul>
-        <p style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;">
-          <b>⚠️ Importante — protezione dei dati</b><br>
-          Quando crei un alunno <b>non scrivere il suo nome per esteso</b>: usa le
-          <b>iniziali</b> o uno <b>pseudonimo</b> (es. <i>"E.R."</i>, <i>"M.B."</i>, <i>"Sole"</i>).<br><br>
-          <b>Perché:</b> l'etichetta che scegli viene salvata nel file su
-          Google Drive e — se condividi il vocabolario con una collega — anche sul server di
-          sincronizzazione. Poiché un vocabolario CAA riguarda un alunno con bisogni
-          comunicativi specifici, associarvi il nome completo significherebbe trattare un
-          dato personale delicato di un minore. Con le sole iniziali il vocabolario resta
-          perfettamente riconoscibile per te e per le colleghe, ma non identifica l'alunno.<br><br>
-          Il nome per esteso, se ti serve, tienilo sui documenti scolastici — non qui.
-        </p>
-      </div>
-
-      <div class="info-section">
-        <h4>☁️ 9. Salvataggio su Google Drive</h4>
-        <p>Clicca il pulsante <b>Drive</b> in alto a destra → <b>"Collega a Google Drive"</b>.<br>
-        Da quel momento ogni modifica al vocabolario viene salvata automaticamente sul tuo Drive, accessibile da qualsiasi PC o tablet.</p>
-        <p style="background:#f0fdf4;border-left:3px solid #86efac;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
-          ✅ Il tuo vocabolario personale resta sempre sul tuo Google Drive. Solo per la condivisione con le colleghe (sotto) passa da un database intermedio protetto — nessun accesso pubblico, nessun dato leggibile senza il codice di condivisione.
-        </p>
-
-        <div style="background:#fff7ed;border:2px solid #fb923c;border-radius:8px;padding:0.7rem 0.9rem;margin-top:0.8rem;font-size:0.85rem;">
-          <b>⚠️ Primo collegamento — possibile avviso di Google</b><br>
-          La prima volta che colleghi il Drive, Google potrebbe mostrare un avviso: <em>"Questa app non è verificata"</em>. È normale per le app scolastiche interne non commerciali. <b>Non è un virus o un pericolo.</b><br>
-          Se compare: clicca <b>"Avanzate"</b> (in basso a sinistra nella schermata Google) → poi <b>"Vai su edutechlab.it (non sicuro)"</b> → autorizza.<br>
-          Questo avviso, se compare, è <b>solo alla prima volta</b>. Dopo, il collegamento è automatico.
+    <div class="modal guide-modal" role="dialog" aria-labelledby="guide-title">
+      <div class="guide-head">
+        <h3 id="guide-title">📘 Guida di CAArtella</h3>
+        <div class="guide-search">
+          <input type="search" id="guide-q" placeholder="Cerca nella guida — es. plurale, stampa, collega…" autocomplete="off">
         </div>
-
-        <h5 style="margin-top:1rem;">📤 Condividere il vocabolario con una collega (sync bidirezionale)</h5>
-        <p style="font-size:0.85rem;color:#334155;">Le modifiche che fa la collega si sincronizzano automaticamente sul vocabolario originale — costruite insieme un vocabolario sempre più ricco!</p>
-        <ol style="font-size:0.9rem;padding-left:1.2rem;">
-          <li>Seleziona l'alunno/a nel selettore in cima alla pagina</li>
-          <li>Apri il pannello Drive → attendi che il codice sia caricato (non mostra più ⏳)</li>
-          <li>Clicca <b>"Copia messaggio"</b> — il testo con le istruzioni e il link è già pronto</li>
-          <li>Incolla il messaggio e invialo alla collega (email, chat, ecc.)</li>
-          <li>La collega riceve il messaggio con un <b>link già precompilato</b> — cliccandolo si apre CAArtella con il codice già inserito: deve solo collegare il Drive e cliccare <b>Carica</b></li>
-        </ol>
-        <p style="font-size:0.82rem;color:#64748b;margin-top:0.4rem;">
-          🔒 Non serve più condividere manualmente il file su Google Drive: basta il codice. Non condividere il codice pubblicamente — chiunque lo riceva può leggere e modificare quel vocabolario.
-        </p>
-
-        <h5 style="margin-top:1rem;">📥 Hai ricevuto un vocabolario da una collega?</h5>
-        <ol style="font-size:0.9rem;padding-left:1.2rem;">
-          <li>Clicca il link <b>👉 https://edutechlab.it/caa-tesserine/?condividi=…</b> nel messaggio ricevuto — CAArtella si apre con il codice già nel box blu</li>
-          <li>Clicca <b>Drive</b> in alto a destra e collega il tuo account Google scolastico</li>
-          <li>Se compare l'avviso <em>"app non verificata"</em> → clicca <b>Avanzate → Vai su CAArtella</b> (è normale, solo la prima volta)</li>
-          <li>Nel box blu <b>"📥 Hai ricevuto un vocabolario?"</b> il codice è già precompilato → clicca <b>Carica</b></li>
-          <li>Il vocabolario appare nel selettore alunno — le tue modifiche si sincronizzano automaticamente con la collega!</li>
-        </ol>
+        <button type="button" id="info-close" class="print-x" title="Chiudi">✕</button>
       </div>
-
-      <div class="info-section">
-        <h4>📁 10. Immagini personalizzate</h4>
-        <p>Puoi associare <b>immagini tue</b> a qualsiasi parola (foto, personaggi preferiti, disegni dei bambini):</p>
-        <ul>
-          <li>Clicca su una tessera → apparirà il pulsante <b>"📁 Carica immagine personalizzata"</b></li>
-          <li>Seleziona un file dal tuo dispositivo (PNG, JPG, GIF...)</li>
-          <li>L'immagine viene salvata e usata al posto del pittogramma ARASAAC</li>
-          <li>Le tessere con immagini personalizzate mostrano il badge 📷</li>
-        </ul>
-        <p>Le immagini personalizzate vengono incluse nell'esportazione del dizionario — condividendo il file JSON, le colleghe ricevono anche tutte le immagini.</p>
+      <select id="guide-select" class="guide-select" aria-label="Capitolo della guida"></select>
+      <div class="guide-body">
+        <nav id="guide-menu" class="guide-menu" aria-label="Capitoli della guida"></nav>
+        <article id="guide-text" class="guide-text" tabindex="-1"></article>
       </div>
-
-      <!-- Sezione aggiunta il 28/07/2026 con la modifica "niente resta sul computer".
-           Sta prima del backup JSON perché spiega il principio che regge tutte le
-           risposte pratiche sotto ("dove finiscono i miei dati?"). -->
-      <div class="info-section">
-        <h4>🔒 11. Dove finiscono i dati (e cosa NON resta sul computer)</h4>
-        <p>CAArtella <b>non conserva nulla su questo computer</b>. Né i vocabolari, né le
-        etichette, né le foto che carichi sulle tessere.</p>
-        <ul>
-          <li><b>Con Google Drive collegato</b> — i vocabolari dei tuoi alunni stanno sul
-              <b>tuo</b> Drive; i vocabolari condivisi con le colleghe passano dal server di
-              sincronizzazione. Il computer è solo una finestra su quei dati.</li>
-          <li><b>Senza Drive collegato</b> — l'app funziona lo stesso: cerchi i pittogrammi,
-              generi e stampi. Ma quello che fai <b>vive solo finché la pagina resta aperta</b>:
-              chiudendola, sparisce.</li>
-          <li><b>Vocabolari ricevuti da una collega</b> — per aprirli serve il collegamento a
-              Drive, perché non ne esiste nessuna copia sul tuo computer. Se la collega che te
-              l'ha condiviso lo elimina, sparisce anche da qui.</li>
-        </ul>
-        <p style="background:#f0fdf4;border-left:3px solid #86efac;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
-          ✅ <b>Perché è fatto così:</b> CAArtella si usa spesso su PC condivisi della scuola.
-          Un vocabolario CAA riguarda un alunno con bisogni comunicativi specifici, e le foto
-          delle tessere sono spesso scattate in classe: non devono restare su una macchina che
-          usano anche altri. Nulla sul disco significa nulla da dimenticare lì.
-        </p>
-        <p style="font-size:0.85rem;margin-top:0.5rem;">
-          Per i pittogrammi serve comunque la connessione a Internet: le immagini vengono
-          scaricate ogni volta dal sito <b>ARASAAC</b>, non sono conservate nell'app.
-        </p>
+      <div class="guide-foot">
+        <button type="button" id="guide-prev" class="btn secondary small"></button>
+        <span class="guide-help">Non hai trovato quello che cercavi?
+          <a id="guide-mail" href="mailto:edutechlab.ita@gmail.com" target="_blank" rel="noopener">✉ Scrivi a EduTechLab</a></span>
+        <button type="button" id="guide-next" class="btn primary small"></button>
       </div>
-
-      <div class="info-section">
-        <h4>💾 12. Backup manuale (JSON)</h4>
-        <p>Puoi sempre esportare e importare il vocabolario come file JSON dalla barra degli strumenti sopra l'anteprima. Utile come backup aggiuntivo o per condivisione rapida via WhatsApp.</p>
-        <p style="background:#fef9c3;border-left:3px solid #eab308;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
-          ⚠️ Senza Drive collegato il vocabolario <b>non viene salvato da nessuna parte</b>:
-          resta finché tieni aperta la pagina e si perde quando la chiudi. Collega Drive
-          (oppure esporta il JSON qui sopra) se vuoi conservarlo.
-        </p>
-      </div>
-
-      <div class="info-section">
-        <h4>📱 13. Installa come app</h4>
-        <p>Puoi installare CAArtella direttamente sul tuo dispositivo, così si apre come una
-        vera app senza passare dal browser (serve comunque Internet per i pittogrammi):</p>
-        <ul>
-          <li><b>PC / Mac</b> — nel browser Chrome/Edge: icona ⊕ nella barra degli indirizzi → "Installa app"</li>
-          <li><b>Android</b> — Chrome: menu ⋮ → "Aggiungi a schermata Home"</li>
-          <li><b>iPad / iPhone</b> — Safari: pulsante Condividi 𝛿 → "Aggiungi a schermata Home"</li>
-          <li><b>LIM / Smartboard</b> — usa direttamente da browser Chrome/Edge</li>
-        </ul>
-        <p>⚠️ La generazione dei pittogrammi richiede connessione a Internet (API ARASAAC).</p>
-      </div>
-
-      <div class="info-section info-license">
-        <p>🔑 Pittogrammi: <a href="https://arasaac.org" target="_blank" rel="noopener">ARASAAC</a>
-        © Gobierno de Aragón – Licenza
-        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>
-        — uso gratuito per scopo educativo non commerciale.<br>
-        © 2026 <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> – Fabio Rizzotto – Tutti i diritti riservati |
-        App sviluppata a scopo didattico non commerciale | D.Lgs. 196/2003 – Trattamento dati personali<br>
-        🔒 <a href="https://edutechlab.it/privacy-policy/" target="_blank" rel="noopener">Informativa privacy</a>
-        — quali dati tratta CAArtella, dove finiscono e per quanto restano.</p>
-      </div>
-
-      <button id="info-close-bottom" class="btn primary">✓ Ho capito, inizia!</button>
     </div>
   </div>
 
@@ -357,7 +152,7 @@
     <!-- ── SELETTORE ALUNNO ─────────────────────────────────────────── -->
     <section class="card student-card">
       <div class="student-row">
-        <label for="sel-student">👤 Alunno:</label>
+        <label for="sel-student">👤 Alunno:</label><button type="button" class="help-dot" data-guida="alunni" title="Guida: alunni e vocabolario" aria-label="Apri la guida: alunni e vocabolario">?</button>
         <select id="sel-student">
           <option value="">— Nessun nome (uso generico) —</option>
         </select>
@@ -374,7 +169,7 @@
 
     <!-- ── FORM ─────────────────────────────────────────────────────── -->
     <section class="card form-card">
-      <h2>Inserisci il testo</h2>
+      <h2>Inserisci il testo <button type="button" class="help-dot" data-guida="avvio" title="Guida: da dove si comincia" aria-label="Apri la guida: da dove si comincia">?</button></h2>
 
       <label for="txt-input">Frase o testo (qualsiasi maiuscolo/minuscolo):</label>
       <textarea id="txt-input" rows="4"
@@ -437,12 +232,12 @@
       </div>
 
       <div class="markers-box">
-        <span class="markers-title">🔤 Come trasformare la frase</span>
+        <span class="markers-title">🔤 Come trasformare la frase <button type="button" class="help-dot" data-guida="frase" title="Guida: la frase e le opzioni" aria-label="Apri la guida: la frase e le opzioni">?</button></span>
         <label class="check-label markers-full">
           <input type="checkbox" id="chk-stopwords" />
           <span>Rimuovi articoli, pronomi e preposizioni <small>(il, la, di, a…)</small></span>
         </label>
-        <span class="markers-sub">Segni sui pittogrammi:</span>
+        <span class="markers-sub">Segni sui pittogrammi <button type="button" class="help-dot" data-guida="segni" title="Guida: segni grammaticali" aria-label="Apri la guida: segni grammaticali">?</button></span>
         <label class="check-label">
           <input type="checkbox" id="chk-mark-plural" />
           <span><b class="marker-sym">+</b> Plurale <small>(es. alberi, case)</small></span>
@@ -467,7 +262,7 @@
       <div class="preview-toolbar">
         <h2>Anteprima
           (<span id="lbl-count">0</span> tessere —
-          <span id="lbl-pages">1</span> pagina/e)
+          <span id="lbl-pages">1</span> pagina/e) <button type="button" class="help-dot" data-guida="tessera" title="Guida: cambiare una tessera" aria-label="Apri la guida: cambiare una tessera">?</button>
         </h2>
         <div class="toolbar-actions">
           <button id="btn-export-dict" class="btn secondary small">⬇ Esporta dizionario</button>
@@ -488,7 +283,7 @@
   <div id="print-overlay" class="modal-overlay hidden">
     <div class="modal print-modal" role="dialog" aria-labelledby="print-title">
       <div class="print-head">
-        <h3 id="print-title">🖨️ Anteprima di stampa</h3>
+        <h3 id="print-title">🖨️ Anteprima di stampa <button type="button" class="help-dot" data-guida="stampa" title="Guida: stampa e anteprima" aria-label="Apri la guida: stampa e anteprima">?</button></h3>
         <button type="button" id="print-close" class="print-x" title="Chiudi">✕</button>
       </div>
       <div class="print-body">
@@ -523,7 +318,7 @@
   <div id="drive-modal" class="modal-overlay" style="display:none;">
     <div class="modal drive-modal-inner">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <h3 style="margin:0;">☁️ Google Drive</h3>
+        <h3 style="margin:0;">☁️ Google Drive <button type="button" class="help-dot" data-guida="drive" title="Guida: salvare su Google Drive" aria-label="Apri la guida: salvare su Google Drive">?</button></h3>
         <button type="button" onclick="window._closeDriveModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#64748b;line-height:1;" title="Chiudi">✕</button>
       </div>
 

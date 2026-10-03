@@ -688,52 +688,101 @@ footer a:hover { text-decoration: underline; }
 }
 .status-banner .banner-x:hover { opacity: 1; }
 
-/* ── PANNELLO INFO ─────────────────────────────────────────────── */
-.info-modal {
-  max-width: 560px;
-  width: min(94vw, 560px);
+/* ── GUIDA ILLUSTRATA A CAPITOLI (v5.54) ───────────────────────── */
+/* Sopra le altre finestre: un «?» può aprirla da dentro il pannello Drive o la stampa. */
+#info-overlay { z-index: 1100; }
+.modal.guide-modal {
+  width: min(96vw, 1080px);
+  height: 92vh;
+  max-height: 92vh;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.guide-head { display: flex; align-items: center; gap: 1rem; padding: 0.9rem 1.2rem; border-bottom: 1px solid #ede9fe; }
+.guide-head h3 { margin: 0; white-space: nowrap; }
+.guide-search { flex: 1; }
+.guide-search input { width: 100%; padding: 0.55rem 0.8rem; border: 1.5px solid #e2e8f0; border-radius: 10px; font: inherit; font-size: 0.92rem; background: #f8fafc; }
+.guide-search input:focus { outline: none; border-color: #7c3aed; background: #fff; }
+.guide-select { display: none; margin: 0.6rem 1rem 0; }
+.guide-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 1fr; }
+.guide-menu { overflow-y: auto; padding: 0.8rem 0.6rem; border-right: 1px solid #f1f5f9; background: #fbfaff; display: flex; flex-direction: column; gap: 2px; }
+.g-item { display: flex; align-items: center; gap: 0.55rem; text-align: left; border: 0; background: none; border-radius: 9px; padding: 0.6rem 0.75rem; font: inherit; font-size: 0.92rem; color: #334155; cursor: pointer; }
+.g-item:hover { background: #f3edff; }
+.g-item.active { background: #ede9fe; color: #6d28d9; font-weight: 700; }
+.g-item[hidden] { display: none; }
+.g-ico { width: 1.4em; text-align: center; flex: none; }
+.guide-text { overflow-y: auto; padding: 1.3rem 1.8rem 2rem; font-size: 0.98rem; line-height: 1.65; color: #334155; }
+.guide-text:focus { outline: none; }
+.guide-text h2 { display: flex; align-items: center; gap: 0.5rem; font-size: 1.35rem; color: #4c1d95; margin: 0 0 0.9rem; text-wrap: balance; }
+.guide-text h4 { margin: 1rem 0 0.4rem; color: #4c1d95; font-size: 1rem; }
+.guide-text p { margin: 0 0 0.8rem; max-width: 68ch; }
+.guide-text ul, .guide-text ol { margin: 0 0 0.9rem 1.3rem; max-width: 68ch; }
+.guide-text li { margin-bottom: 0.35rem; }
+.guide-text a { color: #6d28d9; font-weight: 600; }
+.g-steps { list-style: none; margin-left: 0 !important; padding: 0; counter-reset: gs; }
+.g-steps li { counter-increment: gs; position: relative; padding-left: 2.3rem; margin-bottom: 0.7rem; }
+.g-steps li::before { content: counter(gs); position: absolute; left: 0; top: 0.05rem; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #ede9fe; color: #6d28d9; font-weight: 700; font-size: 0.85rem; display: grid; place-items: center; }
+.g-shot { margin: 0.4rem 0 1.1rem; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; max-width: 680px; }
+.g-shot img { display: block; width: 100%; height: auto; }
+.g-shot figcaption { font-size: 0.82rem; color: #64748b; padding: 0.45rem 0.75rem; border-top: 1px solid #f1f5f9; background: #fbfaff; }
+.g-side { display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 1.3rem; align-items: start; margin-bottom: 0.8rem; }
+.g-side .g-shot { margin-top: 0; }
+.g-inline { height: 2em; width: auto; vertical-align: middle; border-radius: 50%; }
+.g-tip { background: #f3edff; border-radius: 10px; padding: 0.65rem 0.9rem; }
+.g-warn { background: #fff7e6; color: #7c4a03; border-radius: 10px; padding: 0.65rem 0.9rem; }
+.g-legal { font-size: 0.8rem; color: #64748b; border-top: 1px solid #f1f5f9; padding-top: 0.8rem; margin-top: 1.2rem; }
+.g-empty { color: #64748b; padding: 2rem 0; text-align: center; }
+.g-table { overflow-x: auto; margin: 0 0 1rem; border: 1px solid #e2e8f0; border-radius: 10px; }
+.g-table table { border-collapse: collapse; width: 100%; min-width: 420px; font-size: 0.9rem; }
+.g-table th, .g-table td { text-align: left; padding: 0.5rem 0.8rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.g-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; }
+.g-table tr:last-child td { border-bottom: 0; }
+.g-signs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 0.4rem 0 1rem; }
+.g-signs > div { border: 1px solid #ede9fe; border-radius: 12px; padding: 0.7rem; background: #fff; }
+.g-signs h4 { margin: 0 0 0.5rem; }
+.g-signs p { font-size: 0.86rem; margin: 0.5rem 0 0; color: #64748b; }
+.g-sym { color: #6d28d9; font-weight: 800; margin-right: 0.2em; }
+.g-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.g-tile { border: 1.5px dashed #c4bcd9; border-radius: 6px; padding: 4px 4px 0; text-align: center; background: #fff; }
+.g-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; display: block; }
+.g-tile span { display: block; border-top: 1px solid #ebe8f2; font: 700 0.68rem/1.2 Arial, sans-serif; padding: 3px 0 4px; color: #111; }
+.guide-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.7rem 1.2rem; border-top: 1px solid #ede9fe; background: #fbfaff; flex-wrap: wrap; }
+.guide-foot [hidden] { visibility: hidden; display: inline-flex; }
+.guide-help { font-size: 0.85rem; color: #64748b; }
+.guide-help a { color: #6d28d9; font-weight: 700; }
+@media (max-width: 760px) {
+  .modal.guide-modal { width: 100vw; height: 100%; max-height: 100%; border-radius: 0; }
+  .guide-head { flex-wrap: wrap; gap: 0.5rem; }
+  .guide-search { order: 3; flex-basis: 100%; }
+  .guide-select { display: block; }
+  .guide-body { grid-template-columns: 1fr; }
+  .guide-menu { display: none; }
+  .guide-text { padding: 1rem; }
+  .g-side, .g-signs { grid-template-columns: 1fr; }
+  .guide-foot { justify-content: center; }
+  .guide-help { order: 3; flex-basis: 100%; text-align: center; }
 }
 
-.info-modal h3 {
-  font-size: 1.1rem;
-  margin-bottom: 1.1rem;
-  color: #4f46e5;
+/* «?» viola: apre la guida sul capitolo di quella parte dell'app */
+.help-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 1.5px solid #c4b5fd;
+  background: #fff;
+  color: #6d28d9;
+  font: 800 0.78rem/1 system-ui, sans-serif;
+  cursor: pointer;
+  vertical-align: middle;
+  padding: 0;
+  margin-left: 0.3rem;
 }
-
-.info-section {
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.info-section:last-of-type { border-bottom: none; }
-
-.info-section h4 {
-  font-size: 0.95rem;
-  color: #334155;
-  margin-bottom: 0.35rem;
-}
-
-.info-section p, .info-section li {
-  font-size: 0.88rem;
-  color: #475569;
-  line-height: 1.5;
-}
-
-.info-section ul {
-  margin: 0.3rem 0 0.3rem 1.2rem;
-}
-
-.info-section li { margin-bottom: 0.2rem; }
-
-.info-license {
-  background: #f8fafc;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-size: 0.82rem !important;
-}
-
-.info-license a { color: #7c3aed; }
+.help-dot:hover { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.help-dot:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
 
 /* ── BADGE IMMAGINE CUSTOM ─────────────────────────────────────── */
 .custom-badge {
