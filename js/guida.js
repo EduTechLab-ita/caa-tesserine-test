@@ -19,11 +19,25 @@ export const GUIDA = [
     <p>CAArtella trasforma una frase in tessere di pittogrammi da stampare, ritagliare e incollare sul quaderno. Tre passi:</p>
     <ol class="g-steps">
       <li><b>Scrivi la frase</b> nel riquadro «Inserisci il testo». Un a capo = una frase nuova, che sul foglio parte da una riga nuova.</li>
-      <li>Premi <b>«🔍 Genera Pittogrammi CAA»</b>: l'app cerca un pittogramma ARASAAC per ogni parola e ti porta all'anteprima.</li>
-      <li>Premi <b>«🖨️ Stampa»</b>: vedi il foglio A4 com'è davvero e lo mandi alla stampante.</li>
+      <li>Premi <b>«🔍 Genera Pittogrammi CAA»</b>: l'app cerca un pittogramma ARASAAC per ogni parola e apre il <a href="#" data-gvai="libretto">libretto delle tessere</a>.</li>
+      <li>Nel libretto premi <b>«🖨️ Stampa»</b>: vedi il foglio A4 com'è davvero e lo mandi alla stampante.</li>
     </ol>
     ${img('inizio.jpg', 'La parte alta di CAArtella: intestazione, avviso Drive e selettore alunno', 'In alto: l\'avviso arancione ricorda che senza Google Drive nulla viene salvato. Sotto, il selettore dell\'alunno.')}
     <p class="g-tip">💡 Questa guida si riapre quando vuoi con il pulsante <b>?</b> in alto a destra. Scrivi una parola nella ricerca per trovare subito il capitolo.</p>` },
+
+  { id: 'libretto', icon: '📖', t: 'Il libretto delle tessere', c: `
+    <p>Dopo «Genera» le tessere si aprono in un <b>libretto a tutto schermo</b>, con le pagine A4 affiancate come in un libro aperto. Le misure sono quelle vere: quello che vedi è quello che stampi.</p>
+    ${img('libretto.jpg', 'Il libretto delle tessere con due pagine affiancate e la barra delle opzioni in alto')}
+    <ul>
+      <li><b>Sfoglia</b> con le frecce ‹ › ai lati, con le frecce della tastiera o, su LIM e tablet, trascinando col dito: la pagina gira come in un libro.</li>
+      <li><b>Frase</b> — le stesse caselle della pagina: <i>Rimuovi articoli</i>, <i>+ Plurale</i>, <i>← → Passato e futuro</i>. Le tessere si aggiornano subito.</li>
+      <li><b>Foglio</b> — colonne, righe, misura della tessera e orientamento: vedi subito come cambia la pagina. Se la misura non ci sta, un avviso arancione dice cosa cambiare.</li>
+      <li><b>Clicca una tessera</b> per cambiarla: vedi <a href="#" data-gvai="tessera">Cambiare una tessera</a>.</li>
+      <li><b>🖨️ Stampa</b> apre l'<a href="#" data-gvai="stampa">anteprima di stampa</a>; <b>✕ Chiudi</b> (o il tasto Esc) torna alla pagina.</li>
+    </ul>
+    <p>Chiuso il libretto, nella pagina resta la barra <b>«Le tue tessere»</b>: da lì lo riapri con <b>«📖 Apri il libretto»</b>.</p>
+    ${img('barra.jpg', 'La barra Le tue tessere con i pulsanti Esporta dizionario, Apri il libretto e Stampa')}
+    <p class="g-tip">💡 Su un telefono il libretto mostra una pagina alla volta.</p>` },
 
   { id: 'frase', icon: '✏️', t: 'La frase e le opzioni', c: `
     <p>Sotto il testo scegli come sarà il foglio:</p>
@@ -70,7 +84,7 @@ export const GUIDA = [
     <p><b>Un segno è sbagliato o manca?</b> Clicca la tessera e correggilo: capitolo <a href="#" data-gvai="tessera">Cambiare una tessera</a>.</p>` },
 
   { id: 'tessera', icon: '↔️', t: 'Cambiare una tessera', c: `
-    <p>Clicca su qualsiasi tessera dell'anteprima: si apre questa finestra.</p>
+    <p>Clicca su qualsiasi tessera del libretto: si apre questa finestra, sopra le pagine.</p>
     <div class="g-side">
       ${img('finestra.jpg', 'La finestra di una tessera: testo, segno grammaticale, immagine personalizzata e pittogrammi alternativi')}
       <ul>
@@ -93,7 +107,7 @@ export const GUIDA = [
     <p class="g-warn">⚠️ Niente foto in cui si riconoscono i bambini: sono dati personali di minori.</p>` },
 
   { id: 'stampa', icon: '🖨️', t: 'Stampa e anteprima', c: `
-    <p>Il pulsante <b>«🖨️ Stampa»</b>, sopra l'anteprima, apre il foglio A4 esattamente come uscirà dalla stampante.</p>
+    <p>Il pulsante <b>«🖨️ Stampa»</b>, nel libretto o nella barra «Le tue tessere», apre il foglio A4 esattamente come uscirà dalla stampante.</p>
     ${img('stampa.jpg', 'Anteprima di stampa con il foglio A4 e i parametri a sinistra', 'A sinistra cambi colonne, righe, misura e orientamento: il foglio si rifà subito.')}
     <ul>
       <li><b>🖨️ Stampa</b> — manda il foglio direttamente alla stampante.</li>
@@ -108,7 +122,7 @@ export const GUIDA = [
     ${img('alunno.jpg', 'Il selettore alunno con i pulsanti Nuovo, modifica, elimina e Mostra vocabolario completo')}
     <ul>
       <li><b>+ Nuovo</b> — crea un alunno. <b>✏️</b> cambia il nome, <b>✕</b> lo elimina.</li>
-      <li><b>📖 Mostra vocabolario completo</b> — mette in anteprima tutte le sue parole, pronte da stampare.</li>
+      <li><b>📖 Mostra vocabolario completo</b> — apre nel libretto tutte le sue parole, pronte da stampare.</li>
       <li><b>Nessun nome (uso generico)</b> — per lavorare senza legare le parole a un alunno.</li>
     </ul>
     <p class="g-warn">⚠️ <b>Mai il nome per esteso.</b> Usa le iniziali o uno pseudonimo (<i>E.R.</i>, <i>Sole</i>). Il nome viaggia col vocabolario su Drive e, se lo condividi, sul server di sincronizzazione: un vocabolario CAA riguarda un alunno con bisogni comunicativi specifici, e il nome completo lo renderebbe un dato delicato di un minore.</p>` },
@@ -163,9 +177,9 @@ export const GUIDA = [
 
   { id: 'backup', icon: '💾', t: 'Copia di sicurezza', c: `
     <p>Oltre al salvataggio automatico su Drive puoi tenere una copia del vocabolario in un file:</p>
-    ${img('anteprima.jpg', 'L\'anteprima delle tessere con i pulsanti Esporta dizionario e Stampa in alto')}
+    ${img('barra.jpg', 'La barra Le tue tessere con il pulsante Esporta dizionario')}
     <ul>
-      <li><b>⬇ Esporta dizionario</b> — sopra l'anteprima: scarica un file con parole, testi e immagini dell'alunno.</li>
+      <li><b>⬇ Esporta dizionario</b> — nella barra «Le tue tessere», dopo aver generato: scarica un file con parole, testi e immagini dell'alunno.</li>
       <li><b>⬆ Importa vocabolario da backup</b> — nel pannello Drive, dopo il collegamento. Se il file è un vocabolario scaricato da Google Drive, l'app riconosce l'alunno da sola; altrimenti le parole si aggiungono all'alunno selezionato.</li>
     </ul>
     <p class="g-warn">⚠️ Il file contiene il vocabolario di un alunno: tienilo sul Drive della scuola, non su chiavette o computer di casa.</p>` },

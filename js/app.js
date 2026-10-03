@@ -51,6 +51,7 @@ import { searchPictograms, getPictogramUrl,
          isPluralForm }                                 from './arasaac.js';
 import { getCandidates, contextParticiple }             from './lemmatizer.js';
 import { initGuida }                                    from './guida.js';
+import { createBook }                                   from './libretto.js';
 import {
   addCustomImage, removeCustomImage,
   fileToDataURL, exportAll, importAll, CUSTOM_PREFIX,
@@ -122,7 +123,6 @@ const statusBanner   = $('status-banner');
 const secPreview     = $('sec-preview');
 const lblCount       = $('lbl-count');
 const lblPages       = $('lbl-pages');
-const pagesContainer = $('pages-container');
 const btnPdf         = $('btn-pdf');
 const btnExportDict  = $('btn-export-dict');
 const fileImportDict = $('file-import-dict');
@@ -1065,7 +1065,10 @@ async function handleGenerate() {
 
   showStatus(msg, 'success');
   btnGenerate.disabled = false;
-  if (!autoRegen) secPreview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!autoRegen) {
+    secPreview.scrollIntoView({ block: 'start' });   // chiudendo il libretto si ritrova la barra
+    book.open();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1116,7 +1119,8 @@ async function handlePrintVocab() {
   tiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
 
   renderPages();
-  showStatus(`📖 Vocabolario completo: ${tiles.length} tessere. Clicca "🖨️ Stampa" per vederlo e stamparlo.`, 'success');
+  book.open();
+  showStatus(`📖 Vocabolario completo: ${tiles.length} tessere. Clicca "🖨️ Stampa" per stamparlo.`, 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1156,55 +1160,53 @@ function computeLayout(tilesArr, cols, rows) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  RENDER GRIGLIA (anteprima browser)
+//  LE TESSERE: barra nella pagina + libretto a tutto schermo (v5.57)
+//  Prima le pagine A4 stavano in fondo alla pagina, una sotto l'altra; ora si
+//  sfogliano nel libretto. Tutti i punti che cambiano le tessere chiamano
+//  renderPages(), che aggiorna la barra e ridisegna il libretto se è aperto.
 // ══════════════════════════════════════════════════════════════════
 function renderPages() {
-  pagesContainer.innerHTML = '';
-
   const { cols, rows } = currentOptions;
-  const layout   = computeLayout(tiles, cols, rows);
-  const numPages = layout.length;
-
   lblCount.textContent = tiles.length;
-  lblPages.textContent = numPages;
+  lblPages.textContent = computeLayout(tiles, cols, rows).length;
   secPreview.classList.remove('hidden');
-
-  layout.forEach((pageRows, pi) => {
-    const pageEl = buildPageElement(pageRows, cols, pi + 1, numPages);
-    pagesContainer.appendChild(pageEl);
-  });
+  _syncBookControls();
+  book.render();
 }
 
-function buildPageElement(pageRows, cols, pageNum, totalPages) {
-  const page = document.createElement('div');
-  page.className = 'a4-page';
+// Le caselle e i menu del libretto rispecchiano quelli della pagina.
+const BOOK_CHECKS  = [[$('bk-stop'), chkStop], [$('bk-plur'), chkMarkPlural], [$('bk-tense'), chkMarkTense]];
+const BOOK_SELECTS = [[$('bk-cols'), selCols], [$('bk-rows'), selRows], [$('bk-size'), selSize], [$('bk-orient'), selOrient]];
+BOOK_SELECTS.forEach(([b, main]) => { b.innerHTML = main.innerHTML; });
 
-  if (totalPages > 1) {
-    const lbl = document.createElement('div');
-    lbl.className   = 'page-label';
-    lbl.textContent = `Pagina ${pageNum} di ${totalPages}`;
-    page.appendChild(lbl);
-  }
-
-  const grid = document.createElement('div');
-  grid.className = 'tile-grid';
-  grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
-  pageRows.forEach(row => {
-    row.forEach(tile => {
-      if (tile) {
-        grid.appendChild(buildTileElement(tile));
-      } else {
-        const empty = document.createElement('div');
-        empty.className = 'tile tile--empty';
-        grid.appendChild(empty);
-      }
-    });
-  });
-
-  page.appendChild(grid);
-  return page;
+function _syncBookControls() {
+  BOOK_CHECKS.forEach(([b, main]) => { b.checked = main.checked; });
+  BOOK_SELECTS.forEach(([b, main]) => { b.value = main.value; });
 }
+
+const book = createBook({
+  layout:    () => computeLayout(tiles, currentOptions.cols, currentOptions.rows),
+  geometry:  pageGeometry,
+  buildTile: tile => buildTileElement(tile),
+  onOpen:    _syncBookControls,
+});
+
+// Una casella del libretto agisce come quella della pagina (stesso evento, stessa logica).
+BOOK_CHECKS.forEach(([b, main]) => b.addEventListener('change', () => {
+  main.checked = b.checked;
+  main.dispatchEvent(new Event('change'));
+}));
+// Colonne, righe, misura e orientamento: dal libretto o dalla pagina, le tessere si rifanno.
+function _onSheetChange() {
+  _readPrintOptions();
+  if (tiles.length > 0) renderPages();
+}
+BOOK_SELECTS.forEach(([b, main]) => {
+  b.addEventListener('change', () => { main.value = b.value; _onSheetChange(); });
+  main.addEventListener('change', _onSheetChange);
+});
+$('bk-print').addEventListener('click', handleExportPDF);
+$('btn-open-book').addEventListener('click', () => { if (tiles.length > 0) book.open(); });
 
 function buildTileElement(tile) {
   const el = document.createElement('div');
@@ -1740,6 +1742,26 @@ async function handleExportPDF() {
   }
 }
 
+// Misure del foglio A4 in mm: UN solo calcolo per PDF e libretto, così ciò che si
+// vede sfogliando è esattamente ciò che si stampa.
+function pageGeometry() {
+  const { cols, rows, orientation } = currentOptions;
+  const isLandscape = orientation === 'landscape';
+  const PAGE_W = isLandscape ? 297 : 210;   // ⚙️ larghezza pagina
+  const PAGE_H = isLandscape ? 210 : 297;   // ⚙️ altezza pagina
+  const MARGIN = 8;                         // ⚙️ margine esterno in mm
+  const GAP    = 2;                         // ⚙️ spazio tra tessere in mm
+  const availW = PAGE_W - 2 * MARGIN;
+  const availH = PAGE_H - 2 * MARGIN - 5;   // -5mm per nota licenza in fondo
+  // Fino alla v5.49 la misura scelta ("Tessera") non veniva usata: la tessera prendeva
+  // sempre tutto lo spazio lasciato da colonne e righe. Ora vale la misura scelta,
+  // ridotta solo se con quelle colonne/righe non ci sta (anteprima e libretto lo dicono).
+  const cellMax = Math.min((availW - (cols - 1) * GAP) / cols, (availH - (rows - 1) * GAP) / rows);
+  const wanted  = currentOptions.tileSize || cellMax;
+  const cell    = Math.min(wanted, cellMax);
+  return { PAGE_W, PAGE_H, MARGIN, GAP, cell, wanted, cellMax, reduced: wanted - cellMax > 0.5 };
+}
+
 async function buildPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     throw new Error('Libreria jsPDF non caricata. Verifica la connessione Internet.');
@@ -1747,25 +1769,8 @@ async function buildPDF() {
 
   const { cols, rows, orientation } = currentOptions;
   const { jsPDF }                   = window.jspdf;
-
-  // ── Misure A4 in mm (adattate all'orientamento) ───────────────
-  const isLandscape = orientation === 'landscape';
-  const PAGE_W  = isLandscape ? 297 : 210;   // ⚙️ larghezza pagina
-  const PAGE_H  = isLandscape ? 210 : 297;   // ⚙️ altezza pagina
-  const MARGIN  = 8;                          // ⚙️ margine esterno in mm
-  const GAP     = 2;                          // ⚙️ spazio tra tessere in mm
+  const { PAGE_W, PAGE_H, MARGIN, GAP, cell, wanted, reduced } = pageGeometry();
   const IMG_PAD = 1;                          // ⚙️ padding interno immagine in mm
-
-  const availW  = PAGE_W - 2 * MARGIN;
-  const availH  = PAGE_H - 2 * MARGIN - 5;   // -5mm per nota licenza in fondo
-  const cellW   = (availW - (cols - 1) * GAP) / cols;
-  const cellH   = (availH - (rows - 1) * GAP) / rows;
-  // Fino alla v5.49 la misura scelta ("Tessera") non veniva usata: la tessera prendeva
-  // sempre tutto lo spazio lasciato da colonne e righe. Ora vale la misura scelta,
-  // ridotta solo se con quelle colonne/righe non ci sta (l'anteprima lo dice).
-  const cellMax = Math.min(cellW, cellH);
-  const wanted  = currentOptions.tileSize || cellMax;
-  const cell    = Math.min(wanted, cellMax);
 
   // ── Font e zona testo adattativi alla dimensione della tessera ──
   const FONT_SIZE = Math.max(4, Math.min(14, Math.round(cell * 0.30)));
@@ -1857,7 +1862,7 @@ async function buildPDF() {
     );
   }
 
-  return { doc, pageCount, cell, wanted, reduced: wanted - cellMax > 0.5 };
+  return { doc, pageCount, cell, wanted, reduced };
 }
 
 /** Disegna un segnaposto testuale quando l'immagine non è disponibile. */
@@ -1880,7 +1885,7 @@ function drawNoImage(doc, x, y, cell, imgSize, imgX) {
 // specifico alunno e perde senso non appena si cambia contesto.
 function clearPreview() {
   tiles = [];
-  pagesContainer.innerHTML = '';
+  book.close();
   secPreview.classList.add('hidden');
   statusDiv.classList.add('hidden');
 }

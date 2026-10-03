@@ -48,7 +48,7 @@
       </span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.56</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.57</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -256,28 +256,63 @@
     <!-- ── STATO ─────────────────────────────────────────────────────── -->
     <div id="status" class="status hidden"></div>
 
-    <!-- ── ANTEPRIMA ─────────────────────────────────────────────────── -->
+    <!-- ── LE TUE TESSERE (v5.57) ─────────────────────────────────────
+         Le pagine si vedono nel libretto a tutto schermo (#book-overlay), che si
+         apre da solo dopo «Genera». Qui resta la barra per riaprirlo. -->
     <section id="sec-preview" class="card hidden">
-
       <div class="preview-toolbar">
-        <h2>Anteprima
+        <h2>📖 Le tue tessere
           (<span id="lbl-count">0</span> tessere —
           <span id="lbl-pages">1</span> pagina/e)
         </h2>
         <div class="toolbar-actions">
           <button id="btn-export-dict" class="btn secondary small">⬇ Esporta dizionario</button>
+          <button id="btn-open-book" class="btn secondary">📖 Apri il libretto</button>
           <button id="btn-pdf" class="btn primary">🖨️ Stampa</button>
         </div>
       </div>
-
-      <p class="hint">💡 Clicca su una tessera per scegliere un pittogramma alternativo.</p>
-
-      <!-- Le pagine A4 vengono iniettate qui da app.js -->
-      <div id="pages-container"></div>
-
     </section>
 
   </main>
+
+  <!-- ── LIBRETTO DELLE TESSERE (v5.57) ─────────────────────────────
+       Disegnato con Fabio sul banco di prova del 03/10/2026: due pagine affiancate
+       che si sfogliano come un libro, opzioni della frase e del foglio in una riga.
+       Le caselle e i menu qui sono specchi di quelli della pagina (app.js li tiene
+       allineati): un solo stato, due posti dove cambiarlo. -->
+  <div id="book-overlay" class="book-overlay hidden" role="dialog" aria-label="Le tue tessere">
+    <div class="bk-bar">
+      <div class="bk-groups">
+        <div class="bk-group">
+          <span class="bk-group-label">Frase</span>
+          <label class="bk-chip"><input type="checkbox" id="bk-stop"> Rimuovi articoli</label>
+          <label class="bk-chip"><input type="checkbox" id="bk-plur"><b>+</b> Plurale</label>
+          <label class="bk-chip"><input type="checkbox" id="bk-tense"><b>← →</b> Passato e futuro</label>
+        </div>
+        <div class="bk-group">
+          <span class="bk-group-label">Foglio</span>
+          <label class="bk-field">Colonne <select id="bk-cols"></select></label>
+          <label class="bk-field">Righe <select id="bk-rows"></select></label>
+          <label class="bk-field">Tessera <select id="bk-size"></select></label>
+          <label class="bk-field"><select id="bk-orient" aria-label="Orientamento"></select></label>
+        </div>
+      </div>
+      <div class="bk-actions">
+        <button type="button" id="bk-print" class="btn primary">🖨️ Stampa</button>
+        <button type="button" id="bk-close" class="btn secondary">✕ Chiudi</button>
+      </div>
+      <p id="bk-warn" class="bk-warn" hidden></p>
+    </div>
+    <div id="bk-stage" class="bk-stage">
+      <button type="button" id="bk-prev" class="bk-arrow" aria-label="Pagina precedente">‹</button>
+      <div id="bk-spread" class="bk-spread"></div>
+      <button type="button" id="bk-next" class="bk-arrow" aria-label="Pagina successiva">›</button>
+    </div>
+    <div class="bk-foot">
+      <span>📖 <span id="bk-count"></span> · <span id="bk-where"></span> · clicca una tessera per cambiarla</span>
+      <div id="bk-dots" class="bk-dots"></div>
+    </div>
+  </div>
 
   <!-- ── ANTEPRIMA DI STAMPA (v5.50) ──────────────────────────────── -->
   <div id="print-overlay" class="modal-overlay hidden">

@@ -3,7 +3,7 @@
 //  ⚙️  Aggiorna CACHE_NAME ad ogni deploy per forzare il refresh
 // ══════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'caartella-v5.56';
+const CACHE_NAME = 'caartella-v5.57';
 
 const STATIC_ASSETS = [
   './',
@@ -18,6 +18,7 @@ const STATIC_ASSETS = [
   './js/lemmatizer.js',
   './js/custom-images.js',
   './js/guida.js',
+  './js/libretto.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
