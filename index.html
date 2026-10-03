@@ -48,7 +48,7 @@
       </span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.49</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.50</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -139,17 +139,20 @@
         <h4>⚙️ 2. Scegli le opzioni</h4>
         <ul>
           <li><b>Colonne / Righe</b> — quante tessere per pagina (es. 4×5 = 20 tessere; fino a 12×12 per tessere molto piccole da ritagliare)</li>
-          <li><b>Dimensione tessera</b> — da 1 cm (micro, lavoretti) a 7 cm (grandi); il PDF adatta automaticamente il font alla dimensione della tessera</li>
+          <li><b>Tessera</b> — la misura stampata, da 1 cm (micro, lavoretti) a 7 cm (grandi); il testo si adatta alla misura. Se con le colonne e le righe scelte non ci sta, l'anteprima di stampa te lo dice</li>
           <li><b>Orientamento</b> — Verticale (A4 classico) o Orizzontale (più colonne sullo stesso foglio)</li>
-          <li><b>Rimuovi articoli…</b> — se spuntato, filtra parole come IL, LA, UNO, DI, A, ecc. per tenere solo le parole piene. Di default è disattivato: tutte le parole vengono incluse.</li>
-          <li><b>Segni grammaticali</b> — aggiungono sul pittogramma il <b>+</b> del plurale e le frecce <b>←</b> passato / <b>→</b> futuro. Spenti di partenza: vedi il punto 5.</li>
+        </ul>
+        <p>Nel riquadro viola <b>«Come trasformare la frase»</b>:</p>
+        <ul>
+          <li><b>Rimuovi articoli, pronomi e preposizioni</b> — tiene solo le parole piene (toglie IL, LA, UNO, DI, A…). Spento di partenza. Se lo cambi dopo aver generato, le tessere si rigenerano da sole.</li>
+          <li><b>Segni sui pittogrammi</b> — il <b>+</b> del plurale e le frecce <b>←</b> passato / <b>→</b> futuro. Spenti di partenza: vedi il punto 5.</li>
         </ul>
       </div>
 
       <div class="info-section">
-        <h4>🔍 3. Genera le tesserine</h4>
-        <p>Clicca <b>"Genera Tesserine CAA"</b>. L'app cerca automaticamente il pittogramma ARASAAC per ogni parola.
-        Vedrai l'anteprima divisa in pagine A4.</p>
+        <h4>🔍 3. Genera i pittogrammi</h4>
+        <p>Clicca <b>"Genera Pittogrammi CAA"</b>. L'app cerca automaticamente il pittogramma ARASAAC per ogni parola
+        e porta la pagina sull'anteprima, divisa in pagine A4.</p>
         <p>⏳ La prima volta per ogni parola ci vuole qualche secondo (richiesta all'API ARASAAC).</p>
       </div>
 
@@ -167,7 +170,7 @@
 
       <div class="info-section">
         <h4>➕ 5. Segni grammaticali: plurale, passato, futuro</h4>
-        <p>Sotto le opzioni ci sono due caselle. Quando le spunti, ARASAAC disegna un piccolo segno
+        <p>Nel riquadro viola ci sono due caselle «Segni sui pittogrammi». Quando le spunti, ARASAAC disegna un piccolo segno
         nell'angolo del pittogramma — lo stesso sistema usato dai programmi di CAA professionali:</p>
         <ul>
           <li><b>+ Plurale</b> — <em>alberi, case, cani, uova</em> mostrano il <b>+</b> in alto a destra.
@@ -194,9 +197,17 @@
       </div>
 
       <div class="info-section">
-        <h4>🖨️ 7. Scarica il PDF</h4>
-        <p>Clicca <b>"Scarica PDF"</b> per ottenere un file A4 pronto per la stampa a colori.
-        Stampa, ritaglia lungo i bordi tratteggiati e incolla sul quaderno!</p>
+        <h4>🖨️ 7. Stampa</h4>
+        <p>Clicca <b>"🖨️ Stampa"</b>: si apre l'<b>anteprima di stampa</b> con il foglio A4 esattamente come
+        uscirà. A sinistra puoi cambiare colonne, righe, misura della tessera e orientamento e vedere
+        subito il risultato. Poi:</p>
+        <ul>
+          <li><b>🖨️ Stampa</b> — manda il foglio direttamente alla stampante;</li>
+          <li><b>⬇ Scarica PDF</b> — salva il file per stamparlo dopo o mandarlo a qualcuno.</li>
+        </ul>
+        <p>Su iPad e telefono l'anteprima del PDF non si apre dentro la pagina: lì usa «Scarica PDF»
+        e stampa dall'app che apre il file.</p>
+        <p>Stampa, ritaglia lungo i bordi e incolla sul quaderno!</p>
       </div>
 
       <div class="info-section">
@@ -206,6 +217,7 @@
           <li><b>Senza nome</b> — dizionario generico, non legato ad alcun alunno</li>
           <li><b>+ Nuovo</b> — crea un alunno: il suo dizionario è separato dagli altri</li>
           <li>Cambiando alunno si carica automaticamente il suo vocabolario</li>
+          <li><b>📖 Mostra vocabolario completo</b> — sotto il nome: mette in anteprima tutte le parole dell'alunno, pronte da stampare</li>
         </ul>
         <p style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:10px 12px;">
           <b>⚠️ Importante — protezione dei dati</b><br>
@@ -352,6 +364,9 @@
         <button id="btn-rename-student" class="btn secondary small" title="Modifica etichetta alunno — usa iniziali o pseudonimo, mai il nome per esteso" style="display:none">✏️</button>
         <button id="btn-remove-student" class="btn secondary small danger" title="Rimuovi alunno selezionato" style="display:none">✕</button>
       </div>
+      <button id="btn-print-vocab" class="btn secondary small vocab-btn" style="display:none">
+        📖 Mostra vocabolario completo
+      </button>
       <p class="student-hint">Il dizionario è separato per ogni alunno. Senza nome usa un dizionario condiviso.</p>
       <p class="student-hint" style="color:#b45309;"><b>⚠️ Privacy:</b> non inserire il nome per esteso dell'alunno — usa solo le <b>iniziali</b> o uno <b>pseudonimo</b> (es. "E.R.", "Sole").</p>
     </section>
@@ -398,7 +413,7 @@
           </select>
         </div>
         <div class="opt">
-          <label for="sel-size">Tessera (PDF)</label>
+          <label for="sel-size">Tessera</label>
           <select id="sel-size">
             <option value="10">1 × 1 cm (micro)</option>
             <option value="15">1.5 × 1.5 cm (mini)</option>
@@ -420,13 +435,13 @@
         </div>
       </div>
 
-      <label class="check-label">
-        <input type="checkbox" id="chk-stopwords" />
-        Rimuovi articoli, pronomi e preposizioni
-      </label>
-
       <div class="markers-box">
-        <span class="markers-title">🔤 Segni grammaticali sui pittogrammi</span>
+        <span class="markers-title">🔤 Come trasformare la frase</span>
+        <label class="check-label markers-full">
+          <input type="checkbox" id="chk-stopwords" />
+          <span>Rimuovi articoli, pronomi e preposizioni <small>(il, la, di, a…)</small></span>
+        </label>
+        <span class="markers-sub">Segni sui pittogrammi:</span>
         <label class="check-label">
           <input type="checkbox" id="chk-mark-plural" />
           <span><b class="marker-sym">+</b> Plurale <small>(es. alberi, case)</small></span>
@@ -438,10 +453,7 @@
       </div>
 
       <button id="btn-generate" class="btn primary">
-        🔍 Genera Tesserine CAA
-      </button>
-      <button id="btn-print-vocab" class="btn secondary">
-        📖 Stampa vocabolario completo
+        🔍 Genera Pittogrammi CAA
       </button>
     </section>
 
@@ -458,7 +470,7 @@
         </h2>
         <div class="toolbar-actions">
           <button id="btn-export-dict" class="btn secondary small">⬇ Esporta dizionario</button>
-          <button id="btn-pdf" class="btn primary">🖨️ Scarica PDF</button>
+          <button id="btn-pdf" class="btn primary">🖨️ Stampa</button>
         </div>
       </div>
 
@@ -470,6 +482,32 @@
     </section>
 
   </main>
+
+  <!-- ── ANTEPRIMA DI STAMPA (v5.50) ──────────────────────────────── -->
+  <div id="print-overlay" class="modal-overlay hidden">
+    <div class="modal print-modal" role="dialog" aria-labelledby="print-title">
+      <div class="print-head">
+        <h3 id="print-title">🖨️ Anteprima di stampa</h3>
+        <button type="button" id="print-close" class="print-x" title="Chiudi">✕</button>
+      </div>
+      <div class="print-body">
+        <aside class="print-side">
+          <div class="opt"><label for="pv-cols">Colonne</label><select id="pv-cols"></select></div>
+          <div class="opt"><label for="pv-rows">Righe</label><select id="pv-rows"></select></div>
+          <div class="opt"><label for="pv-size">Tessera</label><select id="pv-size"></select></div>
+          <div class="opt"><label for="pv-orient">Orientamento</label><select id="pv-orient"></select></div>
+          <p id="pv-info" class="pv-info"></p>
+          <p id="pv-warn" class="pv-warn" hidden></p>
+          <button type="button" id="pv-print" class="btn primary">🖨️ Stampa</button>
+          <button type="button" id="pv-download" class="btn secondary">⬇ Scarica PDF</button>
+        </aside>
+        <div class="print-frame-wrap">
+          <iframe id="pv-frame" title="Anteprima del PDF"></iframe>
+          <div id="pv-loading" class="pv-loading">⏳ Preparo l'anteprima…</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── MODAL ALTERNATIVA ─────────────────────────────────────────── -->
   <div id="modal-overlay" class="modal-overlay hidden">
@@ -674,6 +712,7 @@
           const driveModal = document.getElementById('drive-modal');
           if (driveModal && driveModal.style.display !== 'none') return;
           if (document.getElementById('btn-generate')?.disabled) return;
+          if (!document.getElementById('print-overlay')?.classList.contains('hidden')) return;
           if (!document.getElementById('sec-preview')?.classList.contains('hidden')) return;
           window.location.reload();
         });

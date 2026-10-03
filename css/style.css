@@ -168,11 +168,42 @@ select {
 }
 .markers-box .check-label { margin-bottom: 0; }
 .markers-box small { color: #94a3b8; }
+.markers-box .markers-full { width: 100%; }
+.markers-sub { font-size: 0.85rem; color: #6d28d9; font-weight: 600; }
 .marker-sym {
-  display: inline-block;
-  min-width: 1.6em;
   color: #6d28d9;
   font-weight: 800;
+  margin-right: 0.15em;
+}
+
+/* ── VOCABOLARIO DELL'ALUNNO (v5.50: spostato qui da sotto "Genera") ── */
+.vocab-btn { margin-top: 0.6rem; }
+
+/* ── ANTEPRIMA DI STAMPA (v5.50) ─────────────────────────────── */
+.modal.print-modal {
+  width: min(96vw, 1100px);
+  max-height: 94vh;
+  height: 94vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.2rem 1.2rem;
+  overflow: hidden;
+}
+.print-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
+.print-head h3 { margin: 0; }
+.print-x { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; line-height: 1; }
+.print-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px 1fr; gap: 1rem; }
+.print-side { display: flex; flex-direction: column; gap: 0.7rem; overflow-y: auto; }
+.print-side .btn { justify-content: center; }
+.pv-info { font-size: 0.85rem; color: #475569; margin: 0.2rem 0 0; }
+.pv-warn { font-size: 0.82rem; color: #92400e; background: #fff7e6; border-radius: 8px; padding: 0.5rem 0.6rem; margin: 0; }
+.print-frame-wrap { position: relative; min-height: 0; border: 1px solid #e2e8f0; border-radius: 8px; background: #f1f5f9; overflow: hidden; }
+#pv-frame { width: 100%; height: 100%; border: 0; display: block; }
+.pv-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #64748b; background: #f1f5f9; }
+@media (max-width: 700px) {
+  .modal.print-modal { height: auto; }
+  .print-body { grid-template-columns: 1fr; }
+  .print-frame-wrap { height: 60vh; }
 }
 
 .marker-options { display: flex; flex-wrap: wrap; gap: 0.35rem; }

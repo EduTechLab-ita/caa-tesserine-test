@@ -277,6 +277,17 @@ async function _onMarkerToggle() {
 chkMarkPlural.addEventListener('change', _onMarkerToggle);
 chkMarkTense.addEventListener('change', _onMarkerToggle);
 
+// "Rimuovi articoli…" cambia QUALI tessere ci sono: dopo una generazione dal testo si
+// rigenera da sola (le parole già cercate tornano dal vocabolario, quindi è rapido).
+// Non vale per il vocabolario completo, che non nasce da una frase.
+let _lastSource = null;   // 'text' | 'vocab'
+let _autoRegen  = false;
+chkStop.addEventListener('change', () => {
+  if (tiles.length === 0 || _lastSource !== 'text' || btnGenerate.disabled) return;
+  _autoRegen = true;
+  handleGenerate();
+});
+
 // ── Inizializza selettore alunno ────────────────────────────────
 initStudentSelector();
 
@@ -917,6 +928,10 @@ window._connectSharedPost = async () => {
 //  GENERA TESSERE
 // ══════════════════════════════════════════════════════════════════
 async function handleGenerate() {
+  // Rigenerazione da una casella: l'anteprima resta dov'è, niente salti di pagina.
+  const autoRegen = _autoRegen;
+  _autoRegen = false;
+
   const text = txtInput.value.trim();
   if (!text) { showStatus('Inserisci prima un testo.', 'error'); return; }
 
@@ -927,7 +942,8 @@ async function handleGenerate() {
   }
 
   btnGenerate.disabled = true;
-  secPreview.classList.add('hidden');
+  if (!autoRegen) secPreview.classList.add('hidden');
+  _lastSource = 'text';
   tiles    = [];
   lemmaLog = {};
 
@@ -1052,6 +1068,7 @@ async function handleGenerate() {
 
   showStatus(msg, 'success');
   btnGenerate.disabled = false;
+  if (!autoRegen) secPreview.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1076,6 +1093,7 @@ async function handlePrintVocab() {
   };
 
   lemmaLog = {};
+  _lastSource = 'vocab';
   tiles = [...allWords].sort().map(word => {
     const id           = dictionary[word] ?? null;
     const customDataURL = customImages[word] ?? null;
@@ -1101,7 +1119,7 @@ async function handlePrintVocab() {
   tiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
 
   renderPages();
-  showStatus(`📖 Vocabolario completo: ${tiles.length} tessere. Clicca "Scarica PDF" per stamparlo.`, 'success');
+  showStatus(`📖 Vocabolario completo: ${tiles.length} tessere. Clicca "🖨️ Stampa" per vederlo e stamparlo.`, 'success');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1608,33 +1626,124 @@ async function handleImportDict(e) {
 // ══════════════════════════════════════════════════════════════════
 //  ESPORTAZIONE PDF  (jsPDF, nessun backend)
 // ══════════════════════════════════════════════════════════════════
-async function handleExportPDF() {
-  if (tiles.length === 0) return;
+// ── Anteprima di stampa (v5.50) ────────────────────────────────────────────
+// "Stampa" apre il PDF VERO in una finestra, con i parametri modificabili accanto:
+// si vede il risultato prima di sprecare fogli, poi si stampa o si scarica.
+// Su iPad/iPhone/Android un PDF non si mostra dentro la pagina: lì resta Scarica.
+const printOverlay = $('print-overlay');
+const pvFrame      = $('pv-frame');
+const pvLoading    = $('pv-loading');
+const PV_SELECTS   = [[$('pv-cols'), selCols], [$('pv-rows'), selRows], [$('pv-size'), selSize], [$('pv-orient'), selOrient]];
+PV_SELECTS.forEach(([pv, main]) => { pv.innerHTML = main.innerHTML; });
+const CAN_INLINE_PDF = navigator.pdfViewerEnabled !== false
+  && !/iPad|iPhone|iPod|Android/i.test(navigator.userAgent)
+  && !(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let _pvUrl = null, _pvDoc = null, _pvToken = 0;
 
-  btnPdf.disabled = true;
+function _readPrintOptions() {
+  currentOptions = {
+    cols:        parseInt(selCols.value),
+    rows:        parseInt(selRows.value),
+    tileSize:    parseInt(selSize.value),
+    orientation: selOrient.value,
+  };
+}
 
-  // ── Secondo tentativo (sequenziale) per immagini non scaricate al primo giro ─
+async function _ensureTileImages() {
   const missing = tiles.filter(t => t.imageUrl && !t.dataURL);
-  if (missing.length > 0) {
-    showStatus(`⏳ Riprovo ${missing.length} immagini mancanti…`);
-    for (const t of missing) {
-      t.dataURL = await fetchTileDataURL(t);
-    }
-  }
+  if (missing.length === 0) return;
+  showStatus(`⏳ Riprovo ${missing.length} immagini mancanti…`);
+  for (const t of missing) t.dataURL = await fetchTileDataURL(t);
+}
 
-  showStatus('⏳ Generazione PDF in corso…');
+const _cm = mm => (mm / 10).toLocaleString('it-IT', { maximumFractionDigits: 1 });
 
+async function refreshPrintPreview() {
+  const token = ++_pvToken;
+  pvLoading.classList.remove('hidden');
+  _readPrintOptions();
+  renderPages();
+  let built;
   try {
-    await generatePDF();
+    built = await buildPDF();
   } catch (err) {
     console.error('[PDF]', err);
-    showStatus('❌ Errore PDF: ' + err.message + ' — Ricarica la pagina e riprova.', 'error');
+    pvLoading.textContent = '❌ ' + err.message;
+    return;
+  }
+  if (token !== _pvToken) return;
+  _pvDoc = built.doc;
+
+  const { cols, rows } = currentOptions;
+  $('pv-info').textContent = `${built.pageCount} ${built.pageCount === 1 ? 'pagina' : 'pagine'} · `
+    + `${tiles.length} tessere · tessera ${_cm(built.cell)} × ${_cm(built.cell)} cm`;
+  const warn = $('pv-warn');
+  warn.hidden = !built.reduced;
+  if (built.reduced) {
+    warn.textContent = `Con ${cols} colonne e ${rows} righe la tessera entra al massimo di `
+      + `${_cm(built.cell)} cm, non ${_cm(built.wanted)}: per averla più grande togli colonne o righe.`;
+  }
+
+  if (!CAN_INLINE_PDF) {
+    pvLoading.textContent = 'Su tablet e telefono l\'anteprima del PDF non si apre qui dentro: '
+      + 'premi «Scarica PDF» e stampa dall\'app che lo apre. La disposizione delle tessere '
+      + 'è la stessa dell\'anteprima sulla pagina.';
+    return;
+  }
+  const url = URL.createObjectURL(built.doc.output('blob'));
+  pvFrame.onload = () => { if (token === _pvToken) pvLoading.classList.add('hidden'); };
+  pvFrame.src = url + '#navpanes=0&view=Fit';   // senza colonna miniature, pagina intera
+  if (_pvUrl) URL.revokeObjectURL(_pvUrl);
+  _pvUrl = url;
+}
+
+function closePrintPreview() {
+  if (printOverlay.classList.contains('hidden')) return;
+  printOverlay.classList.add('hidden');
+  _pvToken++;
+  pvFrame.src = 'about:blank';
+  if (_pvUrl) { URL.revokeObjectURL(_pvUrl); _pvUrl = null; }
+}
+
+PV_SELECTS.forEach(([pv, main]) => pv.addEventListener('change', () => {
+  main.value = pv.value;
+  refreshPrintPreview();
+}));
+$('print-close').addEventListener('click', closePrintPreview);
+printOverlay.addEventListener('click', e => { if (e.target === printOverlay) closePrintPreview(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePrintPreview(); });
+
+$('pv-print').addEventListener('click', () => {
+  try {
+    pvFrame.contentWindow.focus();
+    pvFrame.contentWindow.print();
+  } catch (err) {
+    console.warn('[PDF] stampa diretta non riuscita, scarico il file', err);
+    _pvDoc?.save('caartella.pdf');
+  }
+});
+$('pv-download').addEventListener('click', () => {
+  if (!_pvDoc) return;
+  _pvDoc.save('caartella.pdf');
+  showStatus('✅ PDF scaricato!', 'success');
+});
+
+async function handleExportPDF() {
+  if (tiles.length === 0) return;
+  btnPdf.disabled = true;
+  try {
+    await _ensureTileImages();
+    PV_SELECTS.forEach(([pv, main]) => { pv.value = main.value; });
+    $('pv-print').classList.toggle('hidden', !CAN_INLINE_PDF);
+    pvLoading.textContent = '⏳ Preparo l\'anteprima…';
+    printOverlay.classList.remove('hidden');
+    await refreshPrintPreview();
   } finally {
     btnPdf.disabled = false;
   }
 }
 
-async function generatePDF() {
+async function buildPDF() {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     throw new Error('Libreria jsPDF non caricata. Verifica la connessione Internet.');
   }
@@ -1654,7 +1763,12 @@ async function generatePDF() {
   const availH  = PAGE_H - 2 * MARGIN - 5;   // -5mm per nota licenza in fondo
   const cellW   = (availW - (cols - 1) * GAP) / cols;
   const cellH   = (availH - (rows - 1) * GAP) / rows;
-  const cell    = Math.min(cellW, cellH);
+  // Fino alla v5.49 la misura scelta ("Tessera") non veniva usata: la tessera prendeva
+  // sempre tutto lo spazio lasciato da colonne e righe. Ora vale la misura scelta,
+  // ridotta solo se con quelle colonne/righe non ci sta (l'anteprima lo dice).
+  const cellMax = Math.min(cellW, cellH);
+  const wanted  = currentOptions.tileSize || cellMax;
+  const cell    = Math.min(wanted, cellMax);
 
   // ── Font e zona testo adattativi alla dimensione della tessera ──
   const FONT_SIZE = Math.max(4, Math.min(14, Math.round(cell * 0.30)));
@@ -1746,8 +1860,7 @@ async function generatePDF() {
     );
   }
 
-  doc.save('caartella.pdf');
-  showStatus('✅ PDF scaricato!', 'success');
+  return { doc, pageCount, cell, wanted, reduced: wanted - cellMax > 0.5 };
 }
 
 /** Disegna un segnaposto testuale quando l'immagine non è disponibile. */
