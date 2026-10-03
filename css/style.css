@@ -585,6 +585,8 @@ footer a:hover { text-decoration: underline; }
   flex-shrink: 0;
 }
 .btn-info:hover { background: rgba(255,255,255,0.32); }
+/* Il pulsante della guida è un «?» dritto, non la «i» in corsivo di prima */
+#btn-info { font-style: normal; font-family: system-ui, 'Segoe UI', sans-serif; font-weight: 800; }
 
 /* Due pulsanti tondi adiacenti nell'header (🔔 avvisi + ⓘ info): solo il primo
    deve spingersi a destra con margin-left:auto, altrimenti si allontanano tra loro. */
@@ -764,25 +766,6 @@ footer a:hover { text-decoration: underline; }
   .guide-foot { justify-content: center; }
   .guide-help { order: 3; flex-basis: 100%; text-align: center; }
 }
-
-/* «?» viola: apre la guida sul capitolo di quella parte dell'app */
-.help-dot {
-  display: inline-grid;
-  place-items: center;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
-  border: 1.5px solid #c4b5fd;
-  background: #fff;
-  color: #6d28d9;
-  font: 800 0.78rem/1 system-ui, sans-serif;
-  cursor: pointer;
-  vertical-align: middle;
-  padding: 0;
-  margin-left: 0.3rem;
-}
-.help-dot:hover { background: #7c3aed; border-color: #7c3aed; color: #fff; }
-.help-dot:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
 
 /* ── BADGE IMMAGINE CUSTOM ─────────────────────────────────────── */
 .custom-badge {

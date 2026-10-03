@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 //  guida.js — Guida illustrata a capitoli (v5.54), stesso schema di Horologium:
-//  ricerca in alto, capitoli a sinistra, testo con immagini a destra, e un «?»
-//  in ogni parte dell'app che apre il capitolo giusto (data-guida="id").
+//  ricerca in alto, capitoli a sinistra, testo con immagini a destra. Si apre solo
+//  dal pulsante «?» dell'intestazione: niente «?» sparsi (deciso con Fabio).
 //  ⚠️ Le immagini in guida/ sono schermate dell'app: vanno rifatte quando cambia
 //  l'aspetto di ciò che mostrano, sempre con dati di fantasia.
 // ══════════════════════════════════════════════════════════════════
@@ -23,7 +23,7 @@ export const GUIDA = [
       <li>Premi <b>«🖨️ Stampa»</b>: vedi il foglio A4 com'è davvero e lo mandi alla stampante.</li>
     </ol>
     ${img('inizio.jpg', 'La parte alta di CAArtella: intestazione, avviso Drive e selettore alunno', 'In alto: l\'avviso arancione ricorda che senza Google Drive nulla viene salvato. Sotto, il selettore dell\'alunno.')}
-    <p class="g-tip">💡 Ogni parte dell'app ha un piccolo <b>?</b> viola: aprilo quando hai un dubbio, ti porta dritto al capitolo giusto di questa guida.</p>` },
+    <p class="g-tip">💡 Questa guida si riapre quando vuoi con il pulsante <b>?</b> in alto a destra. Scrivi una parola nella ricerca per trovare subito il capitolo.</p>` },
 
   { id: 'frase', icon: '✏️', t: 'La frase e le opzioni', c: `
     <p>Sotto il testo scegli come sarà il foglio:</p>
@@ -247,15 +247,6 @@ export function initGuida(version) {
         'Prova con una parola più semplice, oppure scrivici con il pulsante qui sotto.</div>';
     }
   });
-
-  // Ogni «?» dell'app apre il capitolo che lo riguarda.
-  document.addEventListener('click', e => {
-    const h = e.target.closest('[data-guida]');
-    if (!h) return;
-    e.preventDefault();
-    e.stopPropagation();
-    open(h.dataset.guida);
-  }, true);
 
   function open(id) {
     q.value = '';
