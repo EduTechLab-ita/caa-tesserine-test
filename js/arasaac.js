@@ -17,6 +17,42 @@ export function getPictogramUrl(id) {
   return `https://static.arasaac.org/pictograms/${id}/${id}_500.png`;
 }
 
+// Marcatori grammaticali (v5.49): ARASAAC disegna da sé il segno sul pittogramma,
+// ma solo dall'endpoint che genera al volo — lo statico qui sopra resta per tutte le
+// tessere senza segno, perché è più veloce e cacheabile. Verificato il 03/10/2026:
+// stesso formato (PNG 500×500), CORS aperto (serve a jsPDF), tempi simili.
+const MARKER_PARAMS = {
+  plurale: 'plural=true',     // "+" in alto a destra
+  passato: 'action=past',     // freccia ← in alto a sinistra
+  futuro:  'action=future',   // freccia → in alto a destra
+};
+
+/**
+ * URL del pittogramma con il segno grammaticale, o quello statico se il segno manca.
+ * @param {number|string} id
+ * @param {'plurale'|'passato'|'futuro'|null} marker
+ */
+export function getMarkedPictogramUrl(id, marker) {
+  const p = MARKER_PARAMS[marker];
+  return p ? `https://api.arasaac.org/v1/pictograms/${id}?${p}&resolution=500` : getPictogramUrl(id);
+}
+
+const _norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+/**
+ * La parola è la forma PLURALE di una voce ARASAAC? Lo dice ARASAAC stesso: ogni voce
+ * porta il suo plurale (albero → alberi, casa → case, uovo → uova). Niente regole sui
+ * suffissi, che sbaglierebbero i maschili in -e (cane, pane, fiore) e gli invariabili
+ * (città, re): per quelli il plurale coincide col singolare e il segno non si mette.
+ * @param {string} word
+ * @param {Array<{keywords?:Array}>} results - risultati di searchPictograms
+ */
+export function isPluralForm(word, results) {
+  const w = _norm(word);
+  return (results || []).some(r => (r.keywords || []).some(k =>
+    k.plural && _norm(k.plural) === w && _norm(k.keyword) !== w));
+}
+
 /**
  * Cerca pittogrammi in italiano per una parola.
  * Restituisce fino a 8 alternative ordinate per rilevanza ARASAAC.
@@ -37,6 +73,7 @@ export async function searchPictograms(word) {
   return data.slice(0, 8).map(item => ({
     id:       item._id,
     keyword:  item.keywords?.[0]?.keyword ?? word,
+    keywords: item.keywords || [],
     imageUrl: getPictogramUrl(item._id),
   }));
 }

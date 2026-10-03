@@ -48,7 +48,7 @@
       </span>
       <div>
         <h1>CAArtella</h1>
-        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.47</span></span>
+        <span class="by-line">by <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> di Fabio Rizzotto <span class="version-tag" id="app-version">v5.49</span></span>
         <p>Genera fogli A4 con pittogrammi ARASAAC — stampa, ritaglia, incolla sul quaderno</p>
       </div>
       <!-- Campanella avvisi — sostituisce il vecchio messaggio "🔄 Vocabolario
@@ -142,6 +142,7 @@
           <li><b>Dimensione tessera</b> — da 1 cm (micro, lavoretti) a 7 cm (grandi); il PDF adatta automaticamente il font alla dimensione della tessera</li>
           <li><b>Orientamento</b> — Verticale (A4 classico) o Orizzontale (più colonne sullo stesso foglio)</li>
           <li><b>Rimuovi articoli…</b> — se spuntato, filtra parole come IL, LA, UNO, DI, A, ecc. per tenere solo le parole piene. Di default è disattivato: tutte le parole vengono incluse.</li>
+          <li><b>Segni grammaticali</b> — aggiungono sul pittogramma il <b>+</b> del plurale e le frecce <b>←</b> passato / <b>→</b> futuro. Spenti di partenza: vedi il punto 5.</li>
         </ul>
       </div>
 
@@ -156,23 +157,50 @@
         <h4>🔤 4. Forme verbali automatiche</h4>
         <p>ARASAAC archivia i verbi all'infinito. Se scrivi <em>"mangia"</em>, l'app cerca automaticamente
         <em>"mangiare"</em> e usa quel pittogramma. Le tessere modificate mostrano un badge verde <b>≈</b>.</p>
+        <p>Riconosce presente, imperfetto (<em>mangiava</em>), participio (<em>mangiato</em>), gerundio,
+        futuro (<em>mangerà</em>, <em>giocheranno</em>) e i verbi irregolari più usati a scuola:
+        <em>ho, ha, hanno → avere</em> · <em>è, sono, era → essere</em> · <em>va, fa, sta, può, deve, beve, dice</em>
+        · <em>bevuto, preso, visto, andrà, farà, sarà</em>…</p>
+        <p>"Sei" resta il numero 6: se nella frase è il verbo essere, clicca la tessera e scegli il pittogramma giusto.</p>
         <p>Il riepilogo in fondo alla pagina mostra tutte le trasformazioni applicate.</p>
       </div>
 
       <div class="info-section">
-        <h4>↔️ 5. Cambia un pittogramma</h4>
+        <h4>➕ 5. Segni grammaticali: plurale, passato, futuro</h4>
+        <p>Sotto le opzioni ci sono due caselle. Quando le spunti, ARASAAC disegna un piccolo segno
+        nell'angolo del pittogramma — lo stesso sistema usato dai programmi di CAA professionali:</p>
+        <ul>
+          <li><b>+ Plurale</b> — <em>alberi, case, cani, uova</em> mostrano il <b>+</b> in alto a destra.
+          Il plurale lo riconosce il dizionario di ARASAAC, quindi funziona anche per i femminili e
+          per gli irregolari. Le parole uguali al singolare (<em>città, re, caffè</em>) restano senza segno.</li>
+          <li><b>← → Passato e futuro</b> — <em>mangiava, ha mangiato, sono andate, ho bevuto</em> mostrano la freccia
+          <b>←</b> in alto a sinistra; <em>mangerà, andremo</em> la freccia <b>→</b> in alto a destra.
+          Il presente resta senza segno.</li>
+        </ul>
+        <p>Puoi accenderle e spegnerle anche <b>dopo</b> aver generato: le tessere si aggiornano subito,
+        anche nel PDF. L'app ricorda la tua scelta per le volte successive.</p>
+        <p><b>Il segno è sbagliato o manca?</b> Clicca sulla tessera: nella finestra trovi
+        <b>"Segno grammaticale sul pittogramma"</b> con i pulsanti <em>Automatico · Nessuno · + Plurale ·
+        ← Passato · → Futuro</em>. La scelta vale per quella parola finché la pagina resta aperta.</p>
+        <p>💡 Perché spenti di partenza? Per alcuni bambini il segno in più aiuta a capire, per altri
+        è solo rumore: decide l'insegnante, alunno per alunno. Sulle immagini personalizzate il segno
+        non si mette.</p>
+      </div>
+
+      <div class="info-section">
+        <h4>↔️ 6. Cambia un pittogramma</h4>
         <p>Clicca su qualsiasi tessera per vedere pittogrammi alternativi. Seleziona quello più adatto:
         la tua scelta viene salvata automaticamente e usata ogni volta che scrivi quella parola.</p>
       </div>
 
       <div class="info-section">
-        <h4>🖨️ 6. Scarica il PDF</h4>
+        <h4>🖨️ 7. Scarica il PDF</h4>
         <p>Clicca <b>"Scarica PDF"</b> per ottenere un file A4 pronto per la stampa a colori.
         Stampa, ritaglia lungo i bordi tratteggiati e incolla sul quaderno!</p>
       </div>
 
       <div class="info-section">
-        <h4>👤 7. Selettore alunno</h4>
+        <h4>👤 8. Selettore alunno</h4>
         <p>Usa il selettore in cima alla pagina per gestire vocabolari separati per ogni alunno:</p>
         <ul>
           <li><b>Senza nome</b> — dizionario generico, non legato ad alcun alunno</li>
@@ -194,7 +222,7 @@
       </div>
 
       <div class="info-section">
-        <h4>☁️ 8. Salvataggio su Google Drive</h4>
+        <h4>☁️ 9. Salvataggio su Google Drive</h4>
         <p>Clicca il pulsante <b>Drive</b> in alto a destra → <b>"Collega a Google Drive"</b>.<br>
         Da quel momento ogni modifica al vocabolario viene salvata automaticamente sul tuo Drive, accessibile da qualsiasi PC o tablet.</p>
         <p style="background:#f0fdf4;border-left:3px solid #86efac;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
@@ -232,7 +260,7 @@
       </div>
 
       <div class="info-section">
-        <h4>📁 9. Immagini personalizzate</h4>
+        <h4>📁 10. Immagini personalizzate</h4>
         <p>Puoi associare <b>immagini tue</b> a qualsiasi parola (foto, personaggi preferiti, disegni dei bambini):</p>
         <ul>
           <li>Clicca su una tessera → apparirà il pulsante <b>"📁 Carica immagine personalizzata"</b></li>
@@ -247,7 +275,7 @@
            Sta prima del backup JSON perché spiega il principio che regge tutte le
            risposte pratiche sotto ("dove finiscono i miei dati?"). -->
       <div class="info-section">
-        <h4>🔒 10. Dove finiscono i dati (e cosa NON resta sul computer)</h4>
+        <h4>🔒 11. Dove finiscono i dati (e cosa NON resta sul computer)</h4>
         <p>CAArtella <b>non conserva nulla su questo computer</b>. Né i vocabolari, né le
         etichette, né le foto che carichi sulle tessere.</p>
         <ul>
@@ -274,7 +302,7 @@
       </div>
 
       <div class="info-section">
-        <h4>💾 11. Backup manuale (JSON)</h4>
+        <h4>💾 12. Backup manuale (JSON)</h4>
         <p>Puoi sempre esportare e importare il vocabolario come file JSON dalla barra degli strumenti sopra l'anteprima. Utile come backup aggiuntivo o per condivisione rapida via WhatsApp.</p>
         <p style="background:#fef9c3;border-left:3px solid #eab308;padding:0.5rem 0.7rem;border-radius:4px;margin-top:0.5rem;font-size:0.85rem;">
           ⚠️ Senza Drive collegato il vocabolario <b>non viene salvato da nessuna parte</b>:
@@ -284,7 +312,7 @@
       </div>
 
       <div class="info-section">
-        <h4>📱 12. Installa come app</h4>
+        <h4>📱 13. Installa come app</h4>
         <p>Puoi installare CAArtella direttamente sul tuo dispositivo, così si apre come una
         vera app senza passare dal browser (serve comunque Internet per i pittogrammi):</p>
         <ul>
@@ -302,7 +330,9 @@
         <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>
         — uso gratuito per scopo educativo non commerciale.<br>
         © 2026 <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> – Fabio Rizzotto – Tutti i diritti riservati |
-        App sviluppata a scopo didattico non commerciale | D.Lgs. 196/2003 – Trattamento dati personali</p>
+        App sviluppata a scopo didattico non commerciale | D.Lgs. 196/2003 – Trattamento dati personali<br>
+        🔒 <a href="https://edutechlab.it/privacy-policy/" target="_blank" rel="noopener">Informativa privacy</a>
+        — quali dati tratta CAArtella, dove finiscono e per quanto restano.</p>
       </div>
 
       <button id="info-close-bottom" class="btn primary">✓ Ho capito, inizia!</button>
@@ -394,6 +424,18 @@
         <input type="checkbox" id="chk-stopwords" />
         Rimuovi articoli, pronomi e preposizioni
       </label>
+
+      <div class="markers-box">
+        <span class="markers-title">🔤 Segni grammaticali sui pittogrammi</span>
+        <label class="check-label">
+          <input type="checkbox" id="chk-mark-plural" />
+          <span><b class="marker-sym">+</b> Plurale <small>(es. alberi, case)</small></span>
+        </label>
+        <label class="check-label">
+          <input type="checkbox" id="chk-mark-tense" />
+          <span><b class="marker-sym">← →</b> Passato e futuro <small>(es. mangiava, mangerà)</small></span>
+        </label>
+      </div>
 
       <button id="btn-generate" class="btn primary">
         🔍 Genera Tesserine CAA
@@ -587,6 +629,11 @@
     &nbsp;|&nbsp; © 2026 <a href="https://edutechlab.it" target="_blank" rel="noopener">EduTechLab</a> – Fabio Rizzotto – Tutti i diritti riservati
     &nbsp;|&nbsp; App sviluppata a scopo didattico non commerciale
     &nbsp;|&nbsp; D.Lgs. 196/2003 – Trattamento dati personali
+    <!-- Riga propria: in coda alla riga lunga qui sopra il link finiva sotto il
+         pulsante flottante dell'account, illeggibile e non cliccabile (21/08/2026) -->
+    <div class="footer-privacy">
+      <a href="https://edutechlab.it/privacy-policy/" target="_blank" rel="noopener">🔒 Informativa privacy</a>
+    </div>
   </footer>
 
   <!-- jsPDF (client-side PDF, nessun backend necessario).
@@ -617,7 +664,17 @@
 
         // Il nuovo SW si attiva da solo (skipWaiting automatico in sw.js) —
         // quando prende il controllo, ricarica la pagina in automatico.
+        // Guardie (v5.49): alla PRIMA apertura non c'è nulla da aggiornare, e un reload
+        // a metà di un accesso Google o di un lavoro in corso lo butterebbe via senza
+        // spiegazioni ("al primo tentativo non va"). In quei casi la versione nuova
+        // entra alla prossima apertura.
+        const hadController = !!navigator.serviceWorker.controller;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController) return;
+          const driveModal = document.getElementById('drive-modal');
+          if (driveModal && driveModal.style.display !== 'none') return;
+          if (document.getElementById('btn-generate')?.disabled) return;
+          if (!document.getElementById('sec-preview')?.classList.contains('hidden')) return;
           window.location.reload();
         });
       });

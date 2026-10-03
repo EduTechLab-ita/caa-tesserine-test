@@ -148,6 +148,43 @@ select {
 
 .check-label input { width: 16px; height: 16px; cursor: pointer; }
 
+/* ── SEGNI GRAMMATICALI (v5.49) ───────────────────────────────── */
+.markers-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1.4rem;
+  margin: -0.4rem 0 1.2rem;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid #ede9fe;
+  border-radius: 10px;
+  background: #faf5ff;
+}
+.markers-title {
+  width: 100%;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6d28d9;
+}
+.markers-box .check-label { margin-bottom: 0; }
+.markers-box small { color: #94a3b8; }
+.marker-sym {
+  display: inline-block;
+  min-width: 1.6em;
+  color: #6d28d9;
+  font-weight: 800;
+}
+
+.marker-options { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.marker-option {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1.5px solid #e2e8f0;
+}
+.marker-option:hover { border-color: #7c3aed; background: #faf5ff; }
+.marker-option.active { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.marker-note { margin: 0.5rem 0 0; font-size: 0.78rem; color: #92400e; }
+
 /* ── BUTTONS ──────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
@@ -485,6 +522,19 @@ footer {
 
 footer a { color: #7c3aed; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
+
+/* Riga dedicata all'informativa: deve restare leggibile e cliccabile, quindi sta
+   su una riga sua e lascia libero l'angolo in basso a destra, dove galleggia il
+   pulsante dell'account (che altrimenti la copriva — trovato il 21/08/2026). */
+.footer-privacy {
+  margin-top: 0.7rem;
+  padding-right: 4.5rem;
+}
+.footer-privacy a {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+}
 
 /* ── PULSANTE INFO NELL'HEADER ────────────────────────────────── */
 .btn-info {

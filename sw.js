@@ -3,7 +3,7 @@
 //  ⚙️  Aggiorna CACHE_NAME ad ogni deploy per forzare il refresh
 // ══════════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'caartella-v5.47';
+const CACHE_NAME = 'caartella-v5.49';
 
 const STATIC_ASSETS = [
   './',
@@ -31,7 +31,10 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   self.skipWaiting();   // prende controllo immediatamente
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS))
+    // cache:'reload' = dal server, mai dalla cache HTTP del browser: altrimenti la cache
+    // nuova può nascere con dentro i file della versione vecchia (visto il 20/09/2026).
+    caches.open(CACHE_NAME).then(cache =>
+      cache.addAll(STATIC_ASSETS.map(u => new Request(u, { cache: 'reload' }))))
   );
 });
 
@@ -55,6 +58,10 @@ self.addEventListener('fetch', event => {
     event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
     return;
   }
+
+  // Google (accesso, Drive) e Firebase non passano dal SW: intercettarne le POST e le
+  // connessioni in ascolto causa "Failed to fetch" intermittenti (v5.49).
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
 
   // Asset locali: cache-first
   event.respondWith(

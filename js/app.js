@@ -47,7 +47,8 @@ function _resolveIncomingStudentName(suggestedName, code) {
 
 import { parseText, parseTextToPhrases }                from './parser.js';
 import { searchPictograms, getPictogramUrl,
-         fetchImageAsDataURL }                          from './arasaac.js';
+         fetchImageAsDataURL, getMarkedPictogramUrl,
+         isPluralForm }                                 from './arasaac.js';
 import { getCandidates }                                from './lemmatizer.js';
 import {
   addCustomImage, removeCustomImage,
@@ -111,6 +112,8 @@ const selRows        = $('sel-rows');
 const selSize        = $('sel-size');
 const selOrient      = $('sel-orient');
 const chkStop        = $('chk-stopwords');
+const chkMarkPlural  = $('chk-mark-plural');
+const chkMarkTense   = $('chk-mark-tense');
 const btnGenerate    = $('btn-generate');
 const btnPrintVocab  = $('btn-print-vocab');
 const statusDiv      = $('status');
@@ -142,6 +145,137 @@ $('btn-info').addEventListener('click',   openInfo);
 $('info-close').addEventListener('click', closeInfo);
 $('info-close-bottom').addEventListener('click', closeInfo);
 $('info-overlay').addEventListener('click', e => { if (e.target === $('info-overlay')) closeInfo(); });
+
+// ══════════════════════════════════════════════════════════════════
+//  MARCATORI GRAMMATICALI (v5.49)
+//  Segno disegnato da ARASAAC sul pittogramma: + plurale, ← passato, → futuro.
+//  tile.autoMarker = segno riconosciuto in automatico · _markerOverrides = scelta
+//  fatta a mano dalla maestra per una parola, valida finché la pagina resta aperta.
+// ══════════════════════════════════════════════════════════════════
+// Solo due sì/no di preferenza, nessun dato di alunni: possono restare sul computer.
+const MARKER_PREFS_KEY = 'caa_marker_prefs_v1';
+const _markerOverrides = new Map();   // PAROLA → 'plurale' | 'passato' | 'futuro' | null
+const _markerCache     = new Map();   // PAROLA → segno automatico già calcolato
+const MARKER_LABEL = { plurale: 'plurale (+)', passato: 'passato (←)', futuro: 'futuro (→)' };
+
+try {
+  const p = JSON.parse(localStorage.getItem(MARKER_PREFS_KEY) || '{}');
+  chkMarkPlural.checked = !!p.plural;
+  chkMarkTense.checked  = !!p.tense;
+} catch { /* preferenza illeggibile: restano spenti */ }
+
+function _saveMarkerPrefs() {
+  try {
+    localStorage.setItem(MARKER_PREFS_KEY,
+      JSON.stringify({ plural: chkMarkPlural.checked, tense: chkMarkTense.checked }));
+  } catch { /* navigazione privata: la scelta vale solo per questa visita */ }
+}
+
+function effectiveMarker(tile) {
+  if (_markerOverrides.has(tile.word)) return _markerOverrides.get(tile.word);
+  const m = tile.autoMarker;
+  if (m === 'plurale') return chkMarkPlural.checked ? m : null;
+  if (m === 'passato' || m === 'futuro') return chkMarkTense.checked ? m : null;
+  return null;
+}
+
+function tileImageUrl(tile) {
+  const custom = customImages[tile.word];
+  if (custom) return custom;
+  return tile.id ? getMarkedPictogramUrl(tile.id, effectiveMarker(tile)) : null;
+}
+
+// Se l'immagine col segno non arriva, meglio la tessera senza segno che il ❓.
+async function fetchTileDataURL(tile) {
+  const d = await fetchImageAsDataURL(tile.imageUrl);
+  if (d || !tile.id || customImages[tile.word]) return d;
+  return fetchImageAsDataURL(getPictogramUrl(tile.id));
+}
+
+// Per le parole già nel vocabolario (nessuna ricerca fatta in questa generazione).
+// Prima il plurale, che lo dice ARASAAC con certezza; poi il tempo del verbo.
+async function _detectMarker(word) {
+  if (_markerCache.has(word)) return _markerCache.get(word);
+  let marker = null;
+  const own = await searchPictograms(word).catch(() => []);
+  if (isPluralForm(word, own)) {
+    marker = 'plurale';
+  } else {
+    for (const { candidate, tense } of getCandidates(word)) {
+      const found = await searchPictograms(candidate).catch(() => []);
+      if (found.length > 0) { marker = tense; break; }
+    }
+  }
+  _markerCache.set(word, marker);
+  return marker;
+}
+
+// Passato prossimo: "sono andate", "hanno finito". Da sola "andate" può essere anche
+// "voi andate", ma dopo un ausiliare è sicuramente un participio.
+const AUSILIARI = new Set(['HO', 'HAI', 'HA', 'ABBIAMO', 'AVETE', 'HANNO', 'SONO', 'SEI', 'È',
+  'SIAMO', 'SIETE', 'ERO', 'ERI', 'ERA', 'ERAVAMO', 'ERAVATE', 'ERANO', 'AVEVO', 'AVEVA', 'AVEVANO']);
+const PARTICIPIO = /(AT|UT|IT)[OAIE]$/;
+function _applyAuxPast(tilesArr) {
+  for (const t of tilesArr) {
+    if (t.autoMarker == null && t.afterAux && PARTICIPIO.test(t.word)) t.autoMarker = 'passato';
+  }
+}
+
+async function ensureAutoMarkers(tilesArr) {
+  const todo = [...new Set(tilesArr.filter(t => t.id && !t._markerDone).map(t => t.word))];
+  let next = 0;
+  const worker = async () => {
+    while (next < todo.length) {
+      const w = todo[next++];
+      const m = await _detectMarker(w);
+      tilesArr.forEach(t => { if (t.word === w) { t.autoMarker = m; t._markerDone = true; } });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(6, todo.length) }, worker));
+  _applyAuxPast(tilesArr);
+}
+
+function _prefetchTileImages() {
+  return Promise.all(tiles.filter(t => t.imageUrl && !t.dataURL).map(async t => {
+    const url = t.imageUrl;
+    const d = await fetchTileDataURL(t);
+    if (t.imageUrl === url) t.dataURL = d;   // nel frattempo l'interruttore può aver cambiato immagine
+  }));
+}
+
+function refreshTileImages() {
+  for (const t of tiles) {
+    const url = tileImageUrl(t);
+    if (url !== t.imageUrl) { t.imageUrl = url; t.dataURL = customImages[t.word] || null; }
+  }
+  renderPages();
+  _prefetchTileImages();
+}
+
+function _markerSummary() {
+  const seen = new Set(), parts = [];
+  for (const t of tiles) {
+    const m = effectiveMarker(t);
+    if (m && !seen.has(t.word)) { seen.add(t.word); parts.push(`${t.word.toLowerCase()} ${MARKER_LABEL[m].slice(-3)}`); }
+  }
+  return parts;
+}
+
+async function _onMarkerToggle() {
+  _saveMarkerPrefs();
+  if (tiles.length === 0) return;
+  if ((chkMarkPlural.checked || chkMarkTense.checked) && tiles.some(t => t.id && !t._markerDone)) {
+    showStatus('⏳ Cerco plurali e tempi dei verbi…');
+    await ensureAutoMarkers(tiles);
+  }
+  refreshTileImages();
+  const parts = _markerSummary();
+  showStatus(parts.length
+    ? `🔤 Segni grammaticali: ${parts.join(', ')}`
+    : '🔤 Nessun segno grammaticale sulle tessere.', 'success');
+}
+chkMarkPlural.addEventListener('change', _onMarkerToggle);
+chkMarkTense.addEventListener('change', _onMarkerToggle);
 
 // ── Inizializza selettore alunno ────────────────────────────────
 initStudentSelector();
@@ -813,12 +947,16 @@ async function handleGenerate() {
       let id    = savedId;
       let alts  = [];
       let lemma = null;
+      // Segno grammaticale: qui viene gratis dalle ricerche già fatte; per le parole
+      // già nel vocabolario lo calcola ensureAutoMarkers, solo se un interruttore è acceso.
+      let autoMarker = null;
+      let markerDone = !savedId;
 
       if (!savedId) {
         try {
           // 1. Prova PRIMA i candidati all'infinito (verbi coniugati → infinito)
           const candidates = getCandidates(word);
-          for (const candidate of candidates) {
+          for (const { candidate, tense } of candidates) {
             showStatus(`⏳ (${globalIdx + 1}/${allWords.length}) "${word}" → provo: ${candidate}…`);
             try {
               const candidateAlts = await searchPictograms(candidate);
@@ -826,6 +964,7 @@ async function handleGenerate() {
                 alts  = candidateAlts;
                 lemma = candidate;
                 lemmaLog[word] = candidate;
+                autoMarker = tense;
                 break;
               }
             } catch { /* prossimo candidato */ }
@@ -834,7 +973,9 @@ async function handleGenerate() {
           // 2. Se nessun infinito trovato, prova la parola originale
           if (alts.length === 0) {
             alts = await searchPictograms(word);
+            if (isPluralForm(word, alts)) autoMarker = 'plurale';
           }
+          _markerCache.set(word, autoMarker);
 
           if (alts.length > 0) {
             id         = alts[0].id;
@@ -860,24 +1001,30 @@ async function handleGenerate() {
       tiles.push({
         word,
         id,
-        imageUrl:  customDataURL || (id ? getPictogramUrl(id) : null),
+        imageUrl:  null,             // assegnato sotto da tileImageUrl, dopo i segni grammaticali
         dataURL:   customDataURL || null,
         alts,
         lemma,
+        autoMarker,
+        _markerDone: markerDone,
+        afterAux:  wi > 0 && AUSILIARI.has(phrase[wi - 1]),
         phraseEnd: isLastOfPhrase,   // true = ultima parola di questa frase
       });
       globalIdx++;
     }
   }
 
+  if (chkMarkPlural.checked || chkMarkTense.checked) {
+    showStatus('⏳ Cerco plurali e tempi dei verbi…');
+    await ensureAutoMarkers(tiles);
+  }
+  _applyAuxPast(tiles);
+  tiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
+
   // ── Pre-scarica le immagini come dataURL per jsPDF ───────────
   showStatus(`⏳ Scarico immagini per la stampa PDF (${ok} pittogrammi)…`);
 
-  await Promise.all(
-    tiles
-      .filter(t => t.imageUrl && !t.dataURL)
-      .map(async t => { t.dataURL = await fetchImageAsDataURL(t.imageUrl); })
-  );
+  await _prefetchTileImages();
 
   // ── Leggi opzioni ────────────────────────────────────────────
   currentOptions = {
@@ -900,6 +1047,9 @@ async function handleGenerate() {
     msg += `\n📝 Forma base usata per: ${list}`;
   }
 
+  const markerParts = _markerSummary();
+  if (markerParts.length > 0) msg += `\n🔤 Segni grammaticali: ${markerParts.join(', ')}`;
+
   showStatus(msg, 'success');
   btnGenerate.disabled = false;
 }
@@ -907,7 +1057,7 @@ async function handleGenerate() {
 // ══════════════════════════════════════════════════════════════════
 //  STAMPA VOCABOLARIO COMPLETO
 // ══════════════════════════════════════════════════════════════════
-function handlePrintVocab() {
+async function handlePrintVocab() {
   const allWords = new Set([
     ...Object.keys(dictionary),
     ...Object.keys(customImages),
@@ -932,13 +1082,23 @@ function handlePrintVocab() {
     return {
       word,
       id,
-      imageUrl:  customDataURL || (id ? getPictogramUrl(id) : null),
+      imageUrl:  null,
       dataURL:   customDataURL || null,
       alts:      [],
       lemma:     null,
+      autoMarker: null,
+      _markerDone: false,
       phraseEnd: false,
     };
   });
+
+  if (chkMarkPlural.checked || chkMarkTense.checked) {
+    btnPrintVocab.disabled = true;
+    showStatus(`⏳ Cerco plurali e tempi dei verbi su ${tiles.length} parole…`);
+    await ensureAutoMarkers(tiles);
+    btnPrintVocab.disabled = false;
+  }
+  tiles.forEach(t => { t.imageUrl = tileImageUrl(t); });
 
   renderPages();
   showStatus(`📖 Vocabolario completo: ${tiles.length} tessere. Clicca "Scarica PDF" per stamparlo.`, 'success');
@@ -1064,7 +1224,12 @@ function buildTileElement(tile) {
     img.src     = tile.dataURL || tile.imageUrl;
     img.alt     = tile.word;
     img.loading = 'lazy';
+    if (tile.id && img.src !== getPictogramUrl(tile.id)) {
+      img.onerror = () => { img.onerror = null; img.src = getPictogramUrl(tile.id); };
+    }
     imgWrap.appendChild(img);
+    const marker = effectiveMarker(tile);
+    if (marker) el.title += ` — segno: ${MARKER_LABEL[marker]}`;
   } else {
     const ph = document.createElement('div');
     ph.className   = 'no-image';
@@ -1123,7 +1288,7 @@ async function openModal(tile) {
     // Se ARASAAC non trova nulla, prova la forma base (es. mangia → mangiare)
     if (tile.alts.length === 0) {
       const candidates = getCandidates(tile.word);
-      for (const candidate of candidates) {
+      for (const { candidate } of candidates) {
         try {
           const found = await searchPictograms(candidate);
           if (found.length > 0) {
@@ -1197,6 +1362,58 @@ async function openModal(tile) {
   labelSection.appendChild(labelRow);
   modalAlts.appendChild(labelSection);
 
+  // ── Segno grammaticale scelto a mano (v5.49) ──────────────────
+  // Il riconoscimento automatico può sbagliare ("spremuta" presa per un participio):
+  // qui la maestra decide, e la scelta vale per tutte le tessere con questa parola
+  // finché la pagina resta aperta. Con un'immagine personalizzata il segno non si applica.
+  if (tile.id && !customImages[tile.word]) {
+    const markSection = document.createElement('div');
+    markSection.className = 'label-edit-section marker-section';
+    const markTitle = document.createElement('p');
+    markTitle.className = 'label-edit-title';
+    markTitle.textContent = '🔤 Segno grammaticale sul pittogramma';
+    markSection.appendChild(markTitle);
+
+    const current = _markerOverrides.has(tile.word) ? _markerOverrides.get(tile.word) : 'auto';
+    const autoTxt = tile.autoMarker ? MARKER_LABEL[tile.autoMarker] : 'nessuno';
+    const options = [
+      ['auto', `Automatico (${autoTxt})`],
+      [null, 'Nessuno'],
+      ['plurale', '+ Plurale'],
+      ['passato', '← Passato'],
+      ['futuro', '→ Futuro'],
+    ];
+    const row = document.createElement('div');
+    row.className = 'marker-options';
+    for (const [value, text] of options) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn small marker-option' + (value === current ? ' active' : '');
+      b.textContent = text;
+      b.addEventListener('click', async () => {
+        if (value === 'auto') {
+          _markerOverrides.delete(tile.word);
+          if (!tile._markerDone) await ensureAutoMarkers(tiles.filter(t => t.word === tile.word));
+        } else {
+          _markerOverrides.set(tile.word, value);
+        }
+        refreshTileImages();
+        const m = effectiveMarker(tile);
+        showStatus(`🔤 "${tile.word}": ${m ? 'segno ' + MARKER_LABEL[m] : 'nessun segno'}.`, 'success');
+        closeModal();
+      });
+      row.appendChild(b);
+    }
+    markSection.appendChild(row);
+    if (current === 'auto' && tile.autoMarker && !effectiveMarker(tile)) {
+      const note = document.createElement('p');
+      note.className = 'marker-note';
+      note.textContent = 'Il segno automatico è spento: attivalo con le caselle "Segni grammaticali" sopra il pulsante Genera.';
+      markSection.appendChild(note);
+    }
+    modalAlts.appendChild(markSection);
+  }
+
   // ── Sezione immagine personalizzata (SEMPRE visibile) ────────
   const customSection = document.createElement('div');
   customSection.className = 'custom-upload-section';
@@ -1215,7 +1432,7 @@ async function openModal(tile) {
       customImages = removeCustomImage(customImages, tile.word);
       saveCustomImages(customImages);
       scheduleDriveSync();
-      renderPages();
+      refreshTileImages(); // prima restava l'immagine personalizzata finché non si rigenerava
       openModal(tile);
     });
     customSection.appendChild(currentCustom);
@@ -1303,10 +1520,10 @@ async function openModal(tile) {
     el.appendChild(lbl);
 
     el.addEventListener('click', async () => {
-      // Aggiorna tessera e dizionario
+      // Aggiorna tessera e dizionario (il segno grammaticale resta sul nuovo pittogramma)
       tile.id       = alt.id;
-      tile.imageUrl = alt.imageUrl;
-      tile.dataURL  = await fetchImageAsDataURL(alt.imageUrl);
+      tile.imageUrl = tileImageUrl(tile);
+      tile.dataURL  = await fetchTileDataURL(tile);
       dictionary    = rememberWord(dictionary, tile.word, alt.id);
       scheduleDriveSync();
       renderPages();
@@ -1401,7 +1618,7 @@ async function handleExportPDF() {
   if (missing.length > 0) {
     showStatus(`⏳ Riprovo ${missing.length} immagini mancanti…`);
     for (const t of missing) {
-      t.dataURL = await fetchImageAsDataURL(t.imageUrl);
+      t.dataURL = await fetchTileDataURL(t);
     }
   }
 
